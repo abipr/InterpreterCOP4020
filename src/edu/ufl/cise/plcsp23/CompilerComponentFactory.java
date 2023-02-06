@@ -15,5 +15,9 @@ public class CompilerComponentFactory {
 		//Add statement to return an instance of your scanner
 		return new Scanner();
 	}
+	public static IToken makeToken(int line, int column) {
+		//Add statement to return an instance of your scanner
+		return new Token(line, column);
+	}
 
 }
