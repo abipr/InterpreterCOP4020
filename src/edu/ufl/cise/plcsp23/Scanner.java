@@ -16,7 +16,7 @@ public class Scanner implements IScanner {
     //look up string builder documentation
     final char[] inputChars;
     enum State{START,IN_IDENT,IN_NUM_LIT,HAVE_EQ,IN_STRING_LIT,
-        IN_LT,IN_GT,IN_AND,IN_TIMES,IN_OR}
+        IN_LT,IN_GT,IN_AND,IN_TIMES,IN_OR,IN_ESCAPE,IN_COMMENT}
     State state;
     Scanner(String s) {
     //track line and column
@@ -26,7 +26,6 @@ public class Scanner implements IScanner {
         input = s;
         inputChars = Arrays.copyOf(input.toCharArray(), input.length()+1);
         ch = inputChars[pos];
-        //tokenString = new StringBuilder();
     }
     private static HashMap<String, IToken.Kind > reservedWords;
     static {
@@ -93,15 +92,24 @@ public class Scanner implements IScanner {
         }
     }
 
-    private boolean isEscape(int ch) {
+    private boolean isEscape(int ch) {//follow up
+        //go back in slack, dr. sanders made a helpful post
         //'\b','\r','\t','\"','\\','\n'
         return false;
     }
-    private boolean isWhiteSpace(int ch) {
-        return false;
+    //" \t \r\n \f \n"
+    private boolean isWhiteSpace(int ch) {//follow up, look at ASCII values
+        //9 is TAB, 10 is LF
+        if(ch == 10 || ch == 9 || ch == 13 || ch == 12 || (char)ch == ' '){
+            return true;
+        }
+        else{
+            return false;
+        }
     }
     private boolean isStringChar(char ch) {
-        return isEscape(ch) || isInputChar(ch);
+        //'\b','\r','\t','\"','\\','\n'
+        return ch == '\\' || isInputChar(ch);
     }
     /*
     *
@@ -123,18 +131,16 @@ public class Scanner implements IScanner {
                         case 0 -> {
                             return new Token(IToken.Kind.EOF, tokenString.toString(), line, tokenStart, inputChars);
                         }
-                        case '\b','\r','\t','\"','\\' -> nextChar();
+                        case '\r','\t',' ', '\f' -> nextChar();
 
-
-                        //need to be in other cases too
                         case '\n' -> {
                             column = 0;
                             line += 1;
                             nextChar();
                         }
-
-
-
+                        case '~' -> {
+                            state = State.IN_COMMENT;
+                        }
                         //operators
                         case '=' -> {
                             //set state to has equal
@@ -145,7 +151,7 @@ public class Scanner implements IScanner {
                         case '0' -> {
                             tokenString.append(ch);
                             nextChar();
-                            return new Token(IToken.Kind.NUM_LIT, tokenString.toString(), line, tokenStart, inputChars);
+                            return new NumLitToken(IToken.Kind.NUM_LIT, tokenString.toString(), line, tokenStart, inputChars, 0);
                         }
                         case '1','2','3','4','5','6','7','8','9' -> {//ch is a nonzero digit
                             state = State.IN_NUM_LIT;
@@ -299,6 +305,7 @@ public class Scanner implements IScanner {
                     //		EQ, // ==
                     else {
                         tokenString.append(ch);
+                        nextChar();
                         return new Token(IToken.Kind.EQ,tokenString.toString(), line, tokenStart, inputChars);
                     }
                 }
@@ -311,10 +318,24 @@ public class Scanner implements IScanner {
                         nextChar();
                     }
                     else{
-                        int value = Integer.parseInt(tokenString.toString());
-                        return new NumLitToken(IToken.Kind.NUM_LIT, tokenString.toString(), line, tokenStart, inputChars, value);
+                        int value;
+                        try{
+                            value = Integer.parseInt(tokenString.toString());
+                            return new NumLitToken(IToken.Kind.NUM_LIT, tokenString.toString(), line, tokenStart, inputChars, value);
+                        }
+                        catch(Exception e){
+                            throw new LexicalException("IntLit too big") ;
+                        }
                     }
 
+                }
+                case IN_COMMENT -> {
+                    if(isInputChar(ch)){
+                        nextChar();
+                    }
+                    else{
+                        state = State.START;
+                    }
                 }
                 case IN_IDENT -> {
                     if(isDigit(ch) || isIdentStart(ch)){
@@ -332,33 +353,101 @@ public class Scanner implements IScanner {
                 case IN_STRING_LIT -> {
                     if (isQuote(ch)) {
                         tokenString.append(ch);
-                        return new Token(IToken.Kind.STRING_LIT, tokenString.toString(), line, tokenStart, inputChars);
-                    } else if (isStringChar(ch)) {
+                        return new StringLitToken(IToken.Kind.STRING_LIT,tokenString.toString(), line, tokenStart, inputChars);
+                    }else if ((ch == '\\')){
+                        state = State.IN_ESCAPE;
                         tokenString.append(ch);
-
-
+                        nextChar();
+                    }
+                    else if (isStringChar(ch)) {
+                        tokenString.append(ch);
+                        nextChar();
+                    }
+                    else{
+                        //use if statement to figure out which case was violated
+                        throw new LexicalException("unexpected ch'" + ch + "' in string:"+tokenString.toString());
+                    }
+                }
+                case IN_ESCAPE -> {
+                    //does not consider \n
+                    if (ch =='b' || ch == 't' || ch == 'r' || ch == '"' || ch == '\\' || ch == 'n'){//expand for other esc sequences
+                        tokenString.append(ch);
+                        nextChar();
+                        state = State.IN_STRING_LIT;
+                    }
+                    else{
+                        error("invalid escape");
                     }
                 }
                 case IN_LT -> {
-                    //		LT, // <
                     //		EXCHANGE, // <->
+                    if (ch == '-') {
+                        tokenString.append(ch);
+                        nextChar();
+                        if (ch == '>') {
+                            tokenString.append(ch);
+                            nextChar();
+                            return new Token(IToken.Kind.EXCHANGE, tokenString.toString(), line, tokenStart, inputChars);
+                        }
+                    }
                     //		LE, // <=
+                    else if(ch == '='){
+                        tokenString.append(ch);
+                        nextChar();
+                        return new Token(IToken.Kind.LE,tokenString.toString(), line, tokenStart, inputChars);
+                    }
+                    //		LT, // <
+                    else{
+                        return new Token(IToken.Kind.LT,tokenString.toString(), line, tokenStart, inputChars);
+                    }
                 }
                 case IN_GT -> {
-                    //		GT, // >
                     //		GE, // >=
+                    if(ch == '='){
+                        tokenString.append(ch);
+                        nextChar();
+                        return new Token(IToken.Kind.GE,tokenString.toString(), line, tokenStart, inputChars);
+                    }
+                    //		GT, // >
+                    else{
+                        return new Token(IToken.Kind.GT,tokenString.toString(), line, tokenStart, inputChars);
+                    }
                 }
                 case IN_AND -> {
-                    //		BITAND, // &
                     //		AND, // &&
+                    if(ch == '&'){
+                        tokenString.append(ch);
+                        nextChar();
+                        return new Token(IToken.Kind.AND,tokenString.toString(), line, tokenStart, inputChars);
+                    }
+                    //		BITAND, // &
+                    else{
+                        return new Token(IToken.Kind.BITAND,tokenString.toString(), line, tokenStart, inputChars);
+                    }
                 }
                 case IN_TIMES -> {
-                    //		TIMES, // *
                     //		EXP, // **
+                    if(ch == '*'){
+                        tokenString.append(ch);
+                        nextChar();
+                        return new Token(IToken.Kind.EXP,tokenString.toString(), line, tokenStart, inputChars);
+                    }
+                    //		TIMES, // *
+                    else{
+                        return new Token(IToken.Kind.TIMES,tokenString.toString(), line, tokenStart, inputChars);
+                    }
                 }
                 case IN_OR -> {
-                    //		BITOR, // |
                     //		OR, // ||
+                    if(ch == '|'){
+                        tokenString.append(ch);
+                        nextChar();
+                        return new Token(IToken.Kind.OR,tokenString.toString(), line, tokenStart, inputChars);
+                    }
+                    //		BITOR, // |
+                    else{
+                        return new Token(IToken.Kind.BITOR,tokenString.toString(), line, tokenStart, inputChars);
+                    }
                 }
                 default -> {
                     throw new UnsupportedOperationException("Bug in Scanner");
@@ -376,7 +465,8 @@ public class Scanner implements IScanner {
         return scanToken();
     }
 }
-//check how I am handling string lit
+//write getValue in StringLitToken
+
 //isEscape, isWhiteSpace
 //white space strategy
 //comment strategy

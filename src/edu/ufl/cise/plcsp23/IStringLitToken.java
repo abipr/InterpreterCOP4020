@@ -14,5 +14,5 @@ package edu.ufl.cise.plcsp23;
 public interface IStringLitToken extends IToken {
 	
 	String getValue();
-
+//create string builder, in forloop i=1 i<string.length()-1. if backslash, look at next characher, replace '\''b' with '\b'
 }
