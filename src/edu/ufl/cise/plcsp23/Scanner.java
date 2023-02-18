@@ -291,7 +291,7 @@ public class Scanner implements IScanner {
 
                             else{
 
-                                throw new UnsupportedOperationException(ch + " not implemented yet");
+                                throw new LexicalException(ch + " not implemented yet");
                             }
 
                         }
@@ -388,6 +388,9 @@ public class Scanner implements IScanner {
                             tokenString.append(ch);
                             nextChar();
                             return new Token(IToken.Kind.EXCHANGE, tokenString.toString(), line, tokenStart, inputChars);
+                        }
+                        else{
+                            error("incomplete exchange");
                         }
                     }
                     //		LE, // <=
