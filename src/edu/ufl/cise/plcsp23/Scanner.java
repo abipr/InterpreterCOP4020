@@ -77,18 +77,10 @@ public class Scanner implements IScanner {
         return (ch == '"');
     }
     private boolean isInputChar(int ch) {//visible and control ascii but not LF or CR
-        if(ch <= 127){
-            if(ch == 10){
-                return false;
-            }
-            else if(ch == 13){
-                return false;
-            }
-            else{
-                return true;
-            }
-        }else{
+        if(ch == 10 || ch == 13){
             return false;
+        }else{
+            return true;
         }
     }
 
@@ -318,7 +310,7 @@ public class Scanner implements IScanner {
 
                 }
                 case IN_COMMENT -> {
-                    if(isInputChar(ch)){
+                    if(ch != 10){
                         nextChar();
                     }
                     else{
