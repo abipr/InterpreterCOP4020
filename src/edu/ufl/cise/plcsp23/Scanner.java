@@ -111,14 +111,7 @@ public class Scanner implements IScanner {
         //'\b','\r','\t','\"','\\','\n'
         return ch == '\\' || isInputChar(ch);
     }
-    /*
-    *
-        IDENT,
-		NUM_LIT,
-		STRING_LIT,
-		EOF,
-		ERROR
-		* */
+    //improve by using ERROR state
     private IToken scanToken() throws LexicalException{
         tokenString = new StringBuilder();
         state = State.START;
@@ -132,10 +125,9 @@ public class Scanner implements IScanner {
                             return new Token(IToken.Kind.EOF, tokenString.toString(), line, tokenStart, inputChars);
                         }
                         case '\r','\t',' ', '\f' -> nextChar();
-
                         case '\n' -> {
-                            column = 0;
                             line += 1;
+                            column = 0;
                             nextChar();
                         }
                         case '~' -> {
@@ -278,7 +270,6 @@ public class Scanner implements IScanner {
                             //for long cases check here
                             //ascii, numbers etc
                             //check if ident start
-
                             if(isIdentStart(ch)){
                                 state = State.IN_IDENT;
                                 tokenString.append(ch);
@@ -288,12 +279,9 @@ public class Scanner implements IScanner {
                                 tokenString.append(ch);
                                 nextChar();
                             }
-
                             else{
-
-                                throw new LexicalException(ch + " not implemented yet");
+                                error(ch + " not implemented yet");
                             }
-
                         }
                     }
                 }
@@ -353,10 +341,11 @@ public class Scanner implements IScanner {
                 case IN_STRING_LIT -> {
                     if (isQuote(ch)) {
                         tokenString.append(ch);
+                        nextChar();//the absence of this was the bug for stringLiterals1
                         return new StringLitToken(IToken.Kind.STRING_LIT,tokenString.toString(), line, tokenStart, inputChars);
-                    }else if ((ch == '\\')){
+                    }
+                    else if ((ch == '\\')){
                         state = State.IN_ESCAPE;
-                        tokenString.append(ch);
                         nextChar();
                     }
                     else if (isStringChar(ch)) {
@@ -369,12 +358,13 @@ public class Scanner implements IScanner {
                     }
                 }
                 case IN_ESCAPE -> {
-                    //does not consider \n
                     if (ch =='b' || ch == 't' || ch == 'r' || ch == '"' || ch == '\\' || ch == 'n'){//expand for other esc sequences
+                        tokenString.append('\\');
                         tokenString.append(ch);
                         nextChar();
                         state = State.IN_STRING_LIT;
                     }
+
                     else{
                         error("invalid escape");
                     }
