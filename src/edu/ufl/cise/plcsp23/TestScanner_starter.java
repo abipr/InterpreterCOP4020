@@ -249,5 +249,4 @@ class TestScanner_starter {
 			IToken t = scanner.next();
 		});
 	}
-
 }
