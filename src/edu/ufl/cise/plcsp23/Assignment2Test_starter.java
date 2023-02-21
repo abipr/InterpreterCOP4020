@@ -10,25 +10,14 @@
 
 package edu.ufl.cise.plcsp23;
 
+import edu.ufl.cise.plcsp23.IToken.Kind;
+import edu.ufl.cise.plcsp23.ast.*;
+import org.junit.jupiter.api.Test;
+
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import org.junit.jupiter.api.Test;
-
-import edu.ufl.cise.plcsp23.IToken.Kind;
-import edu.ufl.cise.plcsp23.ast.AST;
-import edu.ufl.cise.plcsp23.ast.BinaryExpr;
-import edu.ufl.cise.plcsp23.ast.ConditionalExpr;
-import edu.ufl.cise.plcsp23.ast.Expr;
-import edu.ufl.cise.plcsp23.ast.IdentExpr;
-import edu.ufl.cise.plcsp23.ast.NumLitExpr;
-import edu.ufl.cise.plcsp23.ast.RandomExpr;
-import edu.ufl.cise.plcsp23.ast.StringLitExpr;
-import edu.ufl.cise.plcsp23.ast.UnaryExpr;
-import edu.ufl.cise.plcsp23.ast.ZExpr;
 
 
 class Assignment2Test_starter {
@@ -69,6 +58,7 @@ class Assignment2Test_starter {
 		assertThat("",e, instanceOf( NumLitExpr.class));
 		NumLitExpr ne = (NumLitExpr)e;
 		assertEquals(value, ne.getValue());
+
 		return ne;
 	}
 	
