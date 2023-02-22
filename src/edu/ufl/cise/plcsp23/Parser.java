@@ -22,6 +22,7 @@ public class Parser implements IParser {
         }
     }
     Expr expr() throws PLCException {
+
         if(temp == null){
             token = scanner.next();
         }
@@ -30,34 +31,21 @@ public class Parser implements IParser {
             if(k == IToken.Kind.RES_if){
                 return conditional_expr();
             }
-            if(k == IToken.Kind.STRING_LIT){
-                consume();
-                return new StringLitExpr(temp);
-            }
-            if(k == IToken.Kind.IDENT){
-                consume();
-                return new IdentExpr(temp);
-            }
-            if(k == IToken.Kind.NUM_LIT){
-                consume();
-                return new NumLitExpr(temp);
-            }
-            if(k == IToken.Kind.RES_rand){
-                consume();
-                return new RandomExpr(temp);
-            }
-            if(k == IToken.Kind.RES_Z){
-                consume();
-                return new ZExpr(temp);
-            }
-            if(k == IToken.Kind.LPAREN){
-                primary_expr();
+            if(k == IToken.Kind.RES_Z || k == IToken.Kind.RES_rand||k == IToken.Kind.LPAREN||k == IToken.Kind.STRING_LIT||k == IToken.Kind.NUM_LIT||k == IToken.Kind.IDENT){
+                return primary_expr();
             }
             if(k == IToken.Kind.BANG ||k == IToken.Kind.MINUS ||k == IToken.Kind.RES_sin ||k == IToken.Kind.RES_cos ||k == IToken.Kind.RES_atan){
-                unary_expr();
+                return unary_expr();
             }
             else{
-                return or_expr();
+                consume();//left expr is temp, op is token
+                switch(token.getKind()){
+                    case BITOR, OR -> {
+                        //return new BinaryExpr(temp, and_expr());
+                    }
+
+                }
+
             }
         }
         throw new SyntaxException("token null in expr");
