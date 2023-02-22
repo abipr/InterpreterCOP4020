@@ -1,9 +1,6 @@
 package edu.ufl.cise.plcsp23;
 
 import edu.ufl.cise.plcsp23.ast.*;
-//import edu.ufl.cise.plcsp23.ast.IdentExpr;
-//import edu.ufl.cise.plcsp23.ast.NumLitExpr;
-//import edu.ufl.cise.plcsp23.ast.StringLitExpr;
 
 public class Parser implements IParser {
     public AST parse() throws PLCException {
@@ -11,8 +8,9 @@ public class Parser implements IParser {
     }
     IScanner scanner;
     IToken token, temp;
-    Parser(IScanner scanner){
+    Parser(IScanner scanner) throws LexicalException{
         this.scanner = scanner;
+        this.token = this.scanner.next();
     }
     void consume() throws PLCException{
         temp = token;
@@ -22,33 +20,20 @@ public class Parser implements IParser {
         }
     }
     Expr expr() throws PLCException {
-
-        if(temp == null){
-            token = scanner.next();
+        //check if in predit set of conditional
+        IToken.Kind k = token.getKind();
+        if(k == IToken.Kind.RES_if){
+            return conditional_expr();
         }
-        if(token != null){
-            IToken.Kind k = token.getKind();
-            if(k == IToken.Kind.RES_if){
-                return conditional_expr();
-            }
-            if(k == IToken.Kind.RES_Z || k == IToken.Kind.RES_rand||k == IToken.Kind.LPAREN||k == IToken.Kind.STRING_LIT||k == IToken.Kind.NUM_LIT||k == IToken.Kind.IDENT){
-                return primary_expr();
-            }
-            if(k == IToken.Kind.BANG ||k == IToken.Kind.MINUS ||k == IToken.Kind.RES_sin ||k == IToken.Kind.RES_cos ||k == IToken.Kind.RES_atan){
-                return unary_expr();
-            }
-            else{
-                consume();//left expr is temp, op is token
-                switch(token.getKind()){
-                    case BITOR, OR -> {
-                        //return new BinaryExpr(temp, and_expr());
-                    }
-
-                }
-
-            }
+        //check if in predict set of or_expr
+        if(k == IToken.Kind.BANG || k == IToken.Kind.MINUS || k == IToken.Kind.RES_sin || k == IToken.Kind.RES_cos||k == IToken.Kind.RES_atan || k == IToken.Kind.STRING_LIT
+                || k == IToken.Kind.NUM_LIT || k == IToken.Kind.IDENT || k == IToken.Kind.LPAREN||k == IToken.Kind.RES_Z ||k == IToken.Kind.RES_rand){
+            return or_expr();
         }
-        throw new SyntaxException("token null in expr");
+        else{
+            throw new SyntaxException("token null in expr");
+        }
+
     }
     Expr conditional_expr() throws PLCException {
         //call checking tokens from left to right, verify order
@@ -104,21 +89,16 @@ public class Parser implements IParser {
     }
     Expr power_expr() throws PLCException {
 //simalar to unary
-        Expr ex = additive_expr();
-        IToken.Kind k = IToken.Kind.ERROR;
-        if(token != null){
-            k = token.getKind();
-        }
-
         IToken t = token;
+        Expr ex = additive_expr();
+        IToken.Kind k = token.getKind();
+
         if(k == IToken.Kind.EXP){
             consume();
-            Expr right = additive_expr();
-            return new UnaryExpr(t,k,right);
+            Expr right = power_expr();
+            return new BinaryExpr(t,ex,k,right);
         }else{
-            Expr p = primary_expr();
-
-            throw new SyntaxException("power expr");
+            return ex;
         }
 
     }
