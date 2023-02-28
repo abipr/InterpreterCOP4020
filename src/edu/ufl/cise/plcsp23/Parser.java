@@ -165,11 +165,22 @@ public class Parser implements IParser {
                 }
                 throw new SyntaxException("Paren is illegal");
             }
+            /*case RES_x -> {
+                consume();
+                return new ;//what is the ast type to return for x,y,a,r?
+            }*/
             default -> {
                 throw new SyntaxException("Primary expr is illegal");
             }
         }
-    }
+    }/*
+    Expr Type() throws PLCException{
+        switch(token.getKind()){
+            case RES_image -> {
+                consume();
+                return Type.IMAGE;
+            }
+    }*/
 
     /*
     from grammer, 1 method for each rule
