@@ -417,5 +417,85 @@ void unary2()
 		UnaryExpr falseCaseR = checkUnary(falseCase.getRight(), Kind.MINUS);
 		checkIdent(falseCaseR.getE(), "this");
 	}
+	// == Unary Tests
+	@Test
+	void unary6primary1string() throws PLCException {
+		String input = "!!sin cos atan\"test\"";
+		AST result = getAST(input);
+		checkUnary(result, Kind.BANG);
+		Expr inner = ((UnaryExpr) result).getE();
+		checkUnary(inner, Kind.BANG);
+		Expr inner2 = ((UnaryExpr) inner).getE();
+		checkUnary(inner2, Kind.RES_sin);
+		Expr inner3 = ((UnaryExpr) inner2).getE();
+		checkUnary(inner3, Kind.RES_cos);
+		Expr inner4 = ((UnaryExpr) inner3).getE();
+		checkUnary(inner4, Kind.RES_atan);
+		StringLitExpr inner5 = (StringLitExpr) ((UnaryExpr) inner4).getE();
+		checkStringLit(inner5, "test");
+	}
+		@Test
+		void unary6primary1numlit() throws PLCException {
+			String input = "!!sin cos atan 152";
+			AST result = getAST(input);
+			checkUnary(result, Kind.BANG);
+			Expr inner = ((UnaryExpr) result).getE();
+			checkUnary(inner, Kind.BANG);
+			Expr inner2 = ((UnaryExpr) inner).getE();
+			checkUnary(inner2, Kind.RES_sin);
+			Expr inner3 = ((UnaryExpr) inner2).getE();
+			checkUnary(inner3, Kind.RES_cos);
+			Expr inner4 = ((UnaryExpr) inner3).getE();
+			checkUnary(inner4, Kind.RES_atan);
+			NumLitExpr inner5 = (NumLitExpr) ((UnaryExpr) inner4).getE();
+			checkNumLit(inner5, 152);
+		}
+		@Test
+		void unary6primary1ident() throws PLCException {
+			String input = "!!sin cos atan _hello_34TEST";
+			AST result = getAST(input);
+			checkUnary(result, Kind.BANG);
+			Expr inner = ((UnaryExpr) result).getE();
+			checkUnary(inner, Kind.BANG);
+			Expr inner2 = ((UnaryExpr) inner).getE();
+			checkUnary(inner2, Kind.RES_sin);
+			Expr inner3 = ((UnaryExpr) inner2).getE();
+			checkUnary(inner3, Kind.RES_cos);
+			Expr inner4 = ((UnaryExpr) inner3).getE();
+			checkUnary(inner4, Kind.RES_atan);
+			IdentExpr inner5 = (IdentExpr) ((UnaryExpr) inner4).getE();
+			checkIdent(inner5, "_hello_34TEST");
+		}
+		@Test
+		void unary6primary1z() throws PLCException {
+			String input = "!!sin cos atan Z";
+			AST result = getAST(input);
+			checkUnary(result, Kind.BANG);
+			Expr inner = ((UnaryExpr) result).getE();
+			checkUnary(inner, Kind.BANG);
+			Expr inner2 = ((UnaryExpr) inner).getE();
+			checkUnary(inner2, Kind.RES_sin);
+			Expr inner3 = ((UnaryExpr) inner2).getE();
+			checkUnary(inner3, Kind.RES_cos);
+			Expr inner4 = ((UnaryExpr) inner3).getE();
+			checkUnary(inner4, Kind.RES_atan);
+			ZExpr inner5 = (ZExpr) ((UnaryExpr) inner4).getE();
+			assertEquals(inner5.getValue(), 255);
+		}
+		@Test
+		void unary6primary1rand() throws PLCException {
+			String input = "!!sin cos atan rand";
+			AST result = getAST(input);
+			checkUnary(result, Kind.BANG);
+			Expr inner = ((UnaryExpr) result).getE();
+			checkUnary(inner, Kind.BANG);
+			Expr inner2 = ((UnaryExpr) inner).getE();
+			checkUnary(inner2, Kind.RES_sin);
+			Expr inner3 = ((UnaryExpr) inner2).getE();
+			checkUnary(inner3, Kind.RES_cos);
+			Expr inner4 = ((UnaryExpr) inner3).getE();
+			checkUnary(inner4, Kind.RES_atan);
+			assertThat("is rand", ((UnaryExpr) inner4).getE(), instanceOf(RandomExpr.class));
+		}
 }
 

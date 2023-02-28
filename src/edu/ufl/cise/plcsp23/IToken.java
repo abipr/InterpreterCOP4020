@@ -76,7 +76,10 @@ public interface IToken {
 		DIV, // /
 		MOD, // %
 		EOF,
-		ERROR
+		ERROR,
+		RES_red,
+		RES_grn,
+		RES_blu
 	}
 
 

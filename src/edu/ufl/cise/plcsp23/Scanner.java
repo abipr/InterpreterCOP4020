@@ -3,9 +3,6 @@ package edu.ufl.cise.plcsp23;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import static java.lang.Character.isDigit;
-import static java.lang.Character.isLetter;
-
 public class Scanner implements IScanner {
 
     int line, column, pos;
@@ -56,6 +53,9 @@ public class Scanner implements IScanner {
         reservedWords.put("Z",IToken.Kind.RES_Z);
         reservedWords.put("a_polar",IToken.Kind.RES_a_polar);
         reservedWords.put("r_polar",IToken.Kind.RES_r_polar);
+        reservedWords.put("red",IToken.Kind.RES_red);
+        reservedWords.put("grn",IToken.Kind.RES_grn);
+        reservedWords.put("blu",IToken.Kind.RES_blu);
     }
     public void nextChar(){
         ch = inputChars[++pos];
