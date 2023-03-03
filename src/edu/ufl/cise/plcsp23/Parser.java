@@ -132,7 +132,38 @@ public class Parser implements IParser {
             Expr right = unary_expr();
             return new UnaryExpr(t,k,right);
         }
-        return primary_expr();
+        return unary_expr_postfix();
+    }
+    Expr unary_expr_postfix() throws PLCException {
+        IToken first = token;
+        Expr primary = primary_expr();
+        PixelSelector p = null;
+        if(token.getKind() == IToken.Kind.LSQUARE){
+            consume();
+            p = Pixel_Selector();
+        }
+        ColorChannel color = null;
+        if(token.getKind() == IToken.Kind.COLON){
+            consume();
+            color = ChannelSelector();
+        }
+        return new UnaryExprPostfix(first, primary, p, color);
+    }
+    ColorChannel ChannelSelector() throws PLCException{
+        switch(token.getKind()){
+            case RES_red -> {
+                return ColorChannel.red;
+            }
+            case RES_grn -> {
+                return ColorChannel.grn;
+            }
+            case RES_blu -> {
+                return ColorChannel.blu;
+            }
+            default -> {
+                throw new SyntaxException("expected ColorChannel got "+token.getKind().toString());
+            }
+        }
     }
     Expr primary_expr() throws PLCException {
         switch(token.getKind()){
@@ -165,23 +196,72 @@ public class Parser implements IParser {
                 }
                 throw new SyntaxException("Paren is illegal");
             }
-            /*case RES_x -> {
+            case RES_x, RES_y, RES_a, RES_r-> {
                 consume();
-                return new ;//what is the ast type to return for x,y,a,r?
-            }*/
+                return new PredeclaredVarExpr(temp);
+            }
+            case LSQUARE -> {
+                consume();
+                return ExpandedPixel();
+            }
+            case RES_x_cart, RES_y_cart, RES_a_polar,RES_r_polar -> {
+                consume();
+                IToken first = temp;
+                PixelSelector p = Pixel_Selector();
+                return new PixelFuncExpr(first, first.getKind(),p);
+            }
             default -> {
                 throw new SyntaxException("Primary expr is illegal");
             }
         }
-    }/*
-    Expr Type() throws PLCException{
-        switch(token.getKind()){
-            case RES_image -> {
-                consume();
-                return Type.IMAGE;
-            }
-    }*/
-
+    }
+    Expr ExpandedPixel() throws PLCException{
+        IToken first = temp;
+        Expr e1 = expr();
+        if(token.getKind() == IToken.Kind.COMMA){
+            consume();
+        }else{
+            throw new SyntaxException("Missing comma");
+        }
+        Expr e2 = expr();
+        if(token.getKind() == IToken.Kind.COMMA){
+            consume();
+        }else{
+            throw new SyntaxException("Missing comma");
+        }
+        Expr e3 = expr();
+        if(token.getKind() == IToken.Kind.RSQUARE){
+            consume();
+        }else{
+            throw new SyntaxException("Missing ]");
+        }
+        return new ExpandedPixelExpr(first, e1, e2, e3);
+    }
+    PixelSelector Pixel_Selector() throws PLCException{
+        IToken first = temp;
+        Expr e1 = expr();
+        if(token.getKind() == IToken.Kind.COMMA){
+            consume();
+        }else{
+            throw new SyntaxException("Missing comma");
+        }
+        Expr e2 = expr();
+        if(token.getKind() == IToken.Kind.RSQUARE){
+            consume();
+        }else{
+            throw new SyntaxException("Missing ]");
+        }
+        return new PixelSelector(first, e1, e2);
+    }
+    Type Type() throws PLCException{
+        IToken.Kind k = token.getKind();
+        if(k == IToken.Kind.RES_image || k == IToken.Kind.RES_pixel ||k == IToken.Kind.RES_int||k == IToken.Kind.RES_string||k == IToken.Kind.RES_void){
+            consume();
+            return Type.getType(temp);
+        }else{
+            throw new SyntaxException("invalid type");
+        }
+    }
     /*
     from grammer, 1 method for each rule
     check token type, if matches grammer consume, else error
