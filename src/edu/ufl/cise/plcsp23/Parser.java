@@ -83,7 +83,6 @@ public class Parser implements IParser {
                         consume();
                         decList.add(d);
                     }else{
-                        in_decList = false;
                         throw new SyntaxException("missing . after declaration");
                     }
                 }else{
@@ -99,7 +98,6 @@ public class Parser implements IParser {
                         consume();
                         statementList.add(s);
                     }else{
-                        in_statementList = false;
                         throw new SyntaxException("missing . after statement");
                     }
                 }else{
@@ -349,12 +347,15 @@ public class Parser implements IParser {
         consume();
         switch(token.getKind()){
             case RES_red -> {
+                consume();
                 return ColorChannel.red;
             }
             case RES_grn -> {
+                consume();
                 return ColorChannel.grn;
             }
             case RES_blu -> {
+                consume();
                 return ColorChannel.blu;
             }
             default -> {
