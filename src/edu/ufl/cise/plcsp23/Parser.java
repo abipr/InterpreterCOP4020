@@ -12,16 +12,19 @@ public class Parser implements IParser {
     Program program() throws PLCException{
         IToken first = token;
         Type t = Type();
-        Ident i = new Ident(token);
-        consume();
+        Ident i = null;
+        if(token.getKind() == IToken.Kind.IDENT){
+            i = new Ident(token);
+            consume();
+        }else{
+            throw new SyntaxException("expected ident");
+        }
         ArrayList<NameDef> params = new ArrayList<NameDef>();
         if(token.getKind() == IToken.Kind.LPAREN){
-            //consume();
             params = ParamList();
-
         }
         else{
-            new SyntaxException("missing ( before ParamList");
+            throw new SyntaxException("missing ( before ParamList");
         }
 
         Block block = block_method();
@@ -49,7 +52,7 @@ public class Parser implements IParser {
             consume();
         }
         else{
-            new SyntaxException("missing ) after ParamList");
+            throw new SyntaxException("missing ) after ParamList");
         }
         return params;
     }
@@ -57,11 +60,17 @@ public class Parser implements IParser {
         IToken first = token;
         Type t = Type();
         Dimension d = null;
+        Ident i = null;
         if(token.getKind() == IToken.Kind.LSQUARE){
             d = dimension();
         }
-        Ident i = new Ident(token);
-        consume();
+        if(token.getKind() == IToken.Kind.IDENT){
+            i = new Ident(token);
+            consume();
+        }else{
+            throw new SyntaxException("expected ident");
+        }
+
         return new NameDef(first,t,d,i);
     }
     Block block_method() throws PLCException {
@@ -107,13 +116,13 @@ public class Parser implements IParser {
             if(token.getKind() == IToken.Kind.RCURLY){
                 consume();
                 return new Block(first,decList, statementList);
+            }else{
+                throw new SyntaxException("missing } after block");
             }
 
         }else{
             throw new SyntaxException("block missing {");
         }
-
-        return new Block(first,decList, statementList);
     }
     Statement statement() throws PLCException {
         IToken first = token;
