@@ -2,9 +2,185 @@ package edu.ufl.cise.plcsp23;
 
 import edu.ufl.cise.plcsp23.ast.*;
 
+import java.util.ArrayList;
+import java.util.List;
+//look for off by 1 error, use debugger
 public class Parser implements IParser {
     public AST parse() throws PLCException {
-        return expr();
+        return program();
+    }
+    Program program() throws PLCException{
+        IToken first = token;
+        Type t = Type();
+        //consume();
+        Ident i = new Ident(token);
+        consume();
+        ArrayList<NameDef> params = new ArrayList<NameDef>();
+        if(token.getKind() == IToken.Kind.LPAREN){
+            consume();
+            params = ParamList();
+            if(token.getKind() == IToken.Kind.RPAREN){
+                consume();
+            }
+            else{
+                new SyntaxException("missing ) after ParamList");
+            }
+        }
+        else{
+            new SyntaxException("missing ( before ParamList");
+        }
+
+
+        Block block = block_method();
+        return new Program(first, t,i,params,block);
+    }
+    ArrayList<NameDef> ParamList() throws PLCException{
+        ArrayList<NameDef> params = new ArrayList<NameDef>();
+        boolean in_param_list = true;
+            //consume();
+            //check this works as intended
+        IToken.Kind k = token.getKind();
+        if(k == IToken.Kind.RES_image || k == IToken.Kind.RES_pixel ||k == IToken.Kind.RES_int||k == IToken.Kind.RES_string||k == IToken.Kind.RES_void){
+            params.add(name_def());
+            while(token.getKind() == IToken.Kind.COMMA){
+                consume();
+                k = token.getKind();
+                if(k == IToken.Kind.RES_image || k == IToken.Kind.RES_pixel ||k == IToken.Kind.RES_int||k == IToken.Kind.RES_string||k == IToken.Kind.RES_void){
+                    params.add(name_def());
+                }else{
+                    throw new SyntaxException("missing nameDef after ,");
+                }
+            }
+
+            //do {
+            //    assert params != null;
+            //} while (params.add(name_def()));
+
+        }
+
+        return params;
+    }
+    NameDef name_def() throws PLCException{
+        IToken first = token;
+        Type t = Type();
+        Dimension d = null;
+        if(token.getKind() == IToken.Kind.LSQUARE){
+            d = dimension();
+        }
+        Ident i = new Ident(token);
+        consume();//verify
+        return new NameDef(first,t,d,i);
+    }
+    Block block_method() throws PLCException {
+        IToken first = token;
+        Declaration d = null;
+        Statement s = null;
+        List<Declaration> decList = new ArrayList<Declaration>();
+        List<Statement> statementList = new ArrayList<Statement>();
+        boolean in_decList = true;
+        boolean in_statementList = true;
+        if(token.getKind() == IToken.Kind.LCURLY){
+            consume();
+            //declaration starts with NameDef which starts with Type
+            while(in_decList){
+                IToken.Kind k = token.getKind();
+                if(k == IToken.Kind.RES_image || k == IToken.Kind.RES_pixel ||k == IToken.Kind.RES_int||k == IToken.Kind.RES_string||k == IToken.Kind.RES_void){
+                    d = declaration();
+                    if(token.getKind() == IToken.Kind.DOT){
+                        consume();
+                        decList.add(d);
+                    }else{
+                        throw new SyntaxException("missing . after declaration");
+                    }
+                }else{
+                    in_decList = false;
+                }
+            }
+            while(in_statementList){
+                IToken.Kind k = token.getKind();
+                if(k == IToken.Kind.RES_write || k == IToken.Kind.RES_while || k == IToken.Kind.IDENT){
+                    s = statement();
+                    if(token.getKind() == IToken.Kind.DOT){
+                        consume();
+                        statementList.add(s);
+                    }else{
+                        throw new SyntaxException("missing . after statement");
+                    }
+                }else{
+                    in_statementList = false;
+                }
+            }
+            if(token.getKind() == IToken.Kind.RCURLY){
+                return new Block(first,decList, statementList);
+            }
+
+        }else{
+            throw new SyntaxException("block missing {");
+        }
+
+        return new Block(first,decList, statementList);
+    }
+    Statement statement() throws PLCException {
+        IToken first = token;
+        Expr ex;
+        switch (token.getKind()) {
+            case IDENT -> {
+                LValue left = lValue();
+                if(token.getKind() == IToken.Kind.ASSIGN){
+                    consume();
+                    ex = expr();
+                    return new AssignmentStatement(first,left,ex);
+                }
+                else{
+                    throw new SyntaxException("missing = in statement");
+                }
+            }
+            case RES_write -> {
+                consume();
+                ex = expr();
+                return new WriteStatement(first,ex);
+            }
+            case RES_while -> {
+                consume();
+                ex = expr();
+                Block b = block_method();
+                return new WhileStatement(first,ex, b);
+            }
+            default -> {
+                throw new SyntaxException("invalid statement");
+            }
+        }
+    }
+    Declaration declaration() throws PLCException{
+        IToken first = token;
+        NameDef name = name_def();
+        Expr initializer = null;
+        if(token.getKind() == IToken.Kind.ASSIGN){
+            consume();
+            initializer = expr();
+        }
+        return new Declaration(first, name, initializer);
+    }
+    Dimension dimension() throws PLCException{
+        IToken first = token;
+        if(token.getKind() == IToken.Kind.LSQUARE){
+            consume();
+            Expr width = expr();
+            if(token.getKind() == IToken.Kind.COMMA){
+                consume();
+                Expr height = expr();
+                if(token.getKind() == IToken.Kind.RSQUARE){
+                    consume();
+                    return new Dimension(first, width, height);
+                }else{
+                    throw new SyntaxException("missing ]");
+                }
+            }else{
+                throw new SyntaxException("missing comma");
+            }
+        }else{
+            throw new SyntaxException("missing [  check if it was consumed where dimension is called");
+        }
     }
     IScanner scanner;
     IToken token, temp;
@@ -27,7 +203,9 @@ public class Parser implements IParser {
         }
         //check if in predict set of or_expr
         if(k == IToken.Kind.BANG || k == IToken.Kind.MINUS || k == IToken.Kind.RES_sin || k == IToken.Kind.RES_cos||k == IToken.Kind.RES_atan || k == IToken.Kind.STRING_LIT
-                || k == IToken.Kind.NUM_LIT || k == IToken.Kind.IDENT || k == IToken.Kind.LPAREN||k == IToken.Kind.RES_Z ||k == IToken.Kind.RES_rand){
+                || k == IToken.Kind.NUM_LIT || k == IToken.Kind.IDENT || k == IToken.Kind.LPAREN||k == IToken.Kind.RES_Z ||k == IToken.Kind.RES_rand || k == IToken.Kind.RES_x
+        ||k == IToken.Kind.RES_y|| k == IToken.Kind.RES_a|| k == IToken.Kind.RES_r|| k == IToken.Kind.LSQUARE|| k == IToken.Kind.RES_x_cart|| k == IToken.Kind.RES_y_cart
+                || k == IToken.Kind.RES_a_polar|| k == IToken.Kind.RES_r_polar){
             return or_expr();
         }
         else{
@@ -139,17 +317,37 @@ public class Parser implements IParser {
         Expr primary = primary_expr();
         PixelSelector p = null;
         if(token.getKind() == IToken.Kind.LSQUARE){
-            consume();
+            //consume();
             p = Pixel_Selector();
         }
         ColorChannel color = null;
         if(token.getKind() == IToken.Kind.COLON){
-            consume();
+            //consume();
             color = ChannelSelector();
+        }
+        if(p == null && color == null){
+            return primary;
         }
         return new UnaryExprPostfix(first, primary, p, color);
     }
+    LValue lValue() throws PLCException {
+        IToken first = token;
+        Ident i = new Ident(token);
+        consume(); //verify
+        PixelSelector p = null;
+        if(token.getKind() == IToken.Kind.LSQUARE){
+            //consume();
+            p = Pixel_Selector();
+        }
+        ColorChannel color = null;
+        if(token.getKind() == IToken.Kind.COLON){
+            //consume();
+            color = ChannelSelector();
+        }
+        return new LValue(first, i, p, color);
+    }
     ColorChannel ChannelSelector() throws PLCException{
+        consume();
         switch(token.getKind()){
             case RES_red -> {
                 return ColorChannel.red;
@@ -161,7 +359,7 @@ public class Parser implements IParser {
                 return ColorChannel.blu;
             }
             default -> {
-                throw new SyntaxException("expected ColorChannel got "+token.getKind().toString());
+                throw new SyntaxException("expected ColorChannel");
             }
         }
     }
@@ -187,6 +385,7 @@ public class Parser implements IParser {
                 consume();
                 return new ZExpr(temp);
             }
+            //handle lparen inside of production for selector and expanded
             case LPAREN -> {
                 consume();
                 Expr e = expr();
@@ -201,7 +400,7 @@ public class Parser implements IParser {
                 return new PredeclaredVarExpr(temp);
             }
             case LSQUARE -> {
-                consume();
+                //consume();
                 return ExpandedPixel();
             }
             case RES_x_cart, RES_y_cart, RES_a_polar,RES_r_polar -> {
@@ -216,7 +415,8 @@ public class Parser implements IParser {
         }
     }
     Expr ExpandedPixel() throws PLCException{
-        IToken first = temp;
+        IToken first = token;
+        consume();
         Expr e1 = expr();
         if(token.getKind() == IToken.Kind.COMMA){
             consume();
@@ -238,7 +438,8 @@ public class Parser implements IParser {
         return new ExpandedPixelExpr(first, e1, e2, e3);
     }
     PixelSelector Pixel_Selector() throws PLCException{
-        IToken first = temp;
+        IToken first = token;
+        consume();
         Expr e1 = expr();
         if(token.getKind() == IToken.Kind.COMMA){
             consume();
