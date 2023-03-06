@@ -12,33 +12,25 @@ public class Parser implements IParser {
     Program program() throws PLCException{
         IToken first = token;
         Type t = Type();
-        //consume();
         Ident i = new Ident(token);
         consume();
         ArrayList<NameDef> params = new ArrayList<NameDef>();
         if(token.getKind() == IToken.Kind.LPAREN){
-            consume();
+            //consume();
             params = ParamList();
-            if(token.getKind() == IToken.Kind.RPAREN){
-                consume();
-            }
-            else{
-                new SyntaxException("missing ) after ParamList");
-            }
+
         }
         else{
             new SyntaxException("missing ( before ParamList");
         }
 
-
         Block block = block_method();
         return new Program(first, t,i,params,block);
     }
     ArrayList<NameDef> ParamList() throws PLCException{
+        consume();//lparen
         ArrayList<NameDef> params = new ArrayList<NameDef>();
         boolean in_param_list = true;
-            //consume();
-            //check this works as intended
         IToken.Kind k = token.getKind();
         if(k == IToken.Kind.RES_image || k == IToken.Kind.RES_pixel ||k == IToken.Kind.RES_int||k == IToken.Kind.RES_string||k == IToken.Kind.RES_void){
             params.add(name_def());
@@ -52,12 +44,13 @@ public class Parser implements IParser {
                 }
             }
 
-            //do {
-            //    assert params != null;
-            //} while (params.add(name_def()));
-
         }
-
+        if(token.getKind() == IToken.Kind.RPAREN){
+            consume();
+        }
+        else{
+            new SyntaxException("missing ) after ParamList");
+        }
         return params;
     }
     NameDef name_def() throws PLCException{
@@ -68,7 +61,7 @@ public class Parser implements IParser {
             d = dimension();
         }
         Ident i = new Ident(token);
-        consume();//verify
+        consume();
         return new NameDef(first,t,d,i);
     }
     Block block_method() throws PLCException {
@@ -90,6 +83,7 @@ public class Parser implements IParser {
                         consume();
                         decList.add(d);
                     }else{
+                        in_decList = false;
                         throw new SyntaxException("missing . after declaration");
                     }
                 }else{
@@ -100,10 +94,12 @@ public class Parser implements IParser {
                 IToken.Kind k = token.getKind();
                 if(k == IToken.Kind.RES_write || k == IToken.Kind.RES_while || k == IToken.Kind.IDENT){
                     s = statement();
+
                     if(token.getKind() == IToken.Kind.DOT){
                         consume();
                         statementList.add(s);
                     }else{
+                        in_statementList = false;
                         throw new SyntaxException("missing . after statement");
                     }
                 }else{
@@ -111,6 +107,7 @@ public class Parser implements IParser {
                 }
             }
             if(token.getKind() == IToken.Kind.RCURLY){
+                consume();
                 return new Block(first,decList, statementList);
             }
 
@@ -144,6 +141,9 @@ public class Parser implements IParser {
                 consume();
                 ex = expr();
                 Block b = block_method();
+                if(token.getKind() == IToken.Kind.RCURLY){
+                    throw new SyntaxException("rcurly was not consumed");
+                }
                 return new WhileStatement(first,ex, b);
             }
             default -> {
@@ -322,7 +322,6 @@ public class Parser implements IParser {
         }
         ColorChannel color = null;
         if(token.getKind() == IToken.Kind.COLON){
-            //consume();
             color = ChannelSelector();
         }
         if(p == null && color == null){
