@@ -153,6 +153,11 @@ public class Parser implements IParser {
                 }
                 return new WhileStatement(first,ex, b);
             }
+            case COLON -> {
+                consume();
+                ex = expr();
+                return new ReturnStatement(first, ex);
+            }
             default -> {
                 throw new SyntaxException("invalid statement");
             }
