@@ -10,6 +10,8 @@
 
 package edu.ufl.cise.plcsp23;
 
+import edu.ufl.cise.plcsp23.ast.*;
+
 public class CompilerComponentFactory {
 	public static IScanner makeScanner(String input) {
 		//Add statement to return an instance of your scanner
@@ -23,5 +25,8 @@ public class CompilerComponentFactory {
 	public static IParser makeParser(String input) throws LexicalException{
 		IScanner scanner = makeScanner(input);
 		return new Parser(scanner);
+	}
+	public static ASTVisitor makeTypeChecker() throws PLCException{
+		return new Visitor();
 	}
 }

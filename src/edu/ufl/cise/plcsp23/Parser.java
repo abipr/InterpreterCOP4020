@@ -100,7 +100,7 @@ public class Parser implements IParser {
             }
             while(in_statementList){
                 IToken.Kind k = token.getKind();
-                if(k == IToken.Kind.RES_write || k == IToken.Kind.RES_while || k == IToken.Kind.IDENT){
+                if(k == IToken.Kind.RES_write || k == IToken.Kind.RES_while || k == IToken.Kind.IDENT || k == IToken.Kind.COLON){
                     s = statement();
 
                     if(token.getKind() == IToken.Kind.DOT){
