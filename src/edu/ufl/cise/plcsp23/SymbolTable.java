@@ -13,11 +13,12 @@ public class SymbolTable {
     }
     HashMap<String, NameDef> table ;//implement with linked list later
     Stack scope;
-    //EnterNewScope(){}
-
+    void enterScope(){}
+    void leaveScope(){}
     //set up symbol table
     //implement the type checking for the language ignoring scoping
 }
+//used to lookup, if not there throw undifined var exception
 /*top to bottom
 * look at slides
 * similar recursive pattern to parser*/
