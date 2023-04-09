@@ -1,0 +1,251 @@
+package edu.ufl.cise.plcsp23;
+
+import edu.ufl.cise.plcsp23.ast.*;
+
+import java.util.List;
+
+public class codeGenerator implements ASTVisitor {
+    //start with the simple ones with literal code
+    //code gen for project
+    StringBuilder output;
+    codeGenerator(){
+        output = new StringBuilder();
+    }
+    String type_to_string(Type type){
+        String javaType = "";
+        switch(type){
+            case INT ->{
+                javaType = "Integer";
+            }
+            case STRING->{
+                javaType = "String";
+            }
+            case VOID->{
+                javaType = "void";
+            }
+            case IMAGE->{
+                throw new UnsupportedOperationException("IMAGE");
+            }
+            case PIXEL->{
+                throw new UnsupportedOperationException("PIXEL");
+            }
+        }
+        return javaType;
+    }
+    public Object visitAssignmentStatement(AssignmentStatement statementAssign, Object arg) throws PLCException {
+        statementAssign.getLv().visit(this,arg);
+        output.append("=");
+        statementAssign.getE().visit(this,arg);
+        return null;
+    }
+
+    public Object visitBinaryExpr(BinaryExpr binaryExpr, Object arg) throws PLCException {
+        output.append("(");
+
+        Expr e0 = binaryExpr.getLeft();//gotten child of binexpr
+        e0.visit(this, arg);
+        switch(binaryExpr.getOp()){
+            case PLUS -> {
+                output.append("+");
+            }
+            case MINUS -> {
+                output.append("-");
+            }
+            case TIMES -> {
+                output.append("*");
+            }
+            case DIV -> {
+                output.append("/");
+            }
+            case MOD -> {
+                output.append("%");
+            }
+            case LT -> {
+                output.append("<");
+            }
+            case GT -> {
+                output.append(">");
+            }
+            case LE -> {
+                output.append("<=");
+            }
+            case GE -> {
+                output.append(">=");
+            }
+            case EQ -> {
+                output.append("==");
+            }
+            case OR -> {
+                output.append("||");
+            }
+            case AND -> {
+                output.append("&&");
+            }
+            case BITOR -> {
+                output.append("|");
+            }
+            case BITAND -> {
+                output.append("&");
+            }
+            case EXP -> {
+                output.append("**");
+            }
+        }
+        Expr e1 = binaryExpr.getRight();
+        e1.visit(this, arg);
+        output.append(")");
+        return null;
+    }
+
+    public Object visitBlock(Block block, Object arg) throws PLCException {
+        //visit Declarations
+        for (Declaration dec:block.getDecList()) {
+            dec.visit(this,arg);
+            output.append(";");
+        }
+        //visit Statements
+        for (Statement statement:block.getStatementList()) {
+            statement.visit(this,arg);
+            output.append(";");
+        }
+        return null;
+    }
+
+    public Object visitConditionalExpr(ConditionalExpr conditionalExpr, Object arg) throws PLCException {
+        Expr e0,e1,e2;
+        e0 = conditionalExpr.getGuard();
+        e1 = conditionalExpr.getTrueCase();
+        e2 = conditionalExpr.getFalseCase();
+
+        output.append("(");
+        e0.visit(this,arg);//may need to revisit because java expects boolean
+        output.append(" ? ");
+        e1.visit(this,arg);
+        output.append(" : ");
+        e2.visit(this,arg);
+        output.append(")");
+        return null;
+    }
+
+    public Object visitDeclaration(Declaration declaration, Object arg) throws PLCException {
+        declaration.getNameDef().visit(this,arg);
+        Expr expr = declaration.getInitializer();
+        if(expr != null){
+            output.append("=");
+            expr.visit(this,arg);
+        }
+        return null;
+    }
+    public Object visitDimension(Dimension dimension, Object arg) throws PLCException {
+        //do not implement in Assignment 5
+        throw new UnsupportedOperationException("visitDimension");
+    }
+    public Object visitExpandedPixelExpr(ExpandedPixelExpr expandedPixelExpr, Object arg) throws PLCException {
+        //do not implement in Assignment 5
+        throw new UnsupportedOperationException("visitExpandedPixelExpr");
+    }
+
+    public Object visitIdent(Ident ident, Object arg) throws PLCException {
+        return null;
+    }
+
+    public Object visitIdentExpr(IdentExpr identExpr, Object arg) throws PLCException {
+        output.append(identExpr.getName());
+        return null;
+    }
+    public Object visitLValue(LValue lValue, Object arg) throws PLCException {
+        output.append(lValue.getIdent().getName());
+        //only handle the case where there is no PixelSelector and no ChannelSelector
+        return null;
+    }
+    public Object visitNameDef(NameDef nameDef, Object arg) throws PLCException {
+        output.append(type_to_string(nameDef.getType()));
+        output.append(" ");
+        output.append(nameDef.getIdent().getName());
+        return null;
+    }
+    public Object visitNumLitExpr(NumLitExpr numLitExpr, Object arg) throws PLCException {
+        output.append(numLitExpr.getValue());
+        return null;
+    }
+    public Object visitPixelFuncExpr(PixelFuncExpr pixelFuncExpr, Object arg) throws PLCException {
+        //do not implement in Assignment 5
+        throw new UnsupportedOperationException("visitPixelFuncExpr");
+    }
+    public Object visitPixelSelector(PixelSelector pixelSelector, Object arg) throws PLCException {
+        //do not implement in Assignment 5
+        throw new UnsupportedOperationException("visitPixelSelector");
+    }
+    public Object visitPredeclaredVarExpr(PredeclaredVarExpr predeclaredVarExpr, Object arg) throws PLCException {
+        //do not implement in Assignment 5
+        throw new UnsupportedOperationException("visitPredeclaredVarExpr");
+    }
+    public Object visitProgram(Program program, Object arg) throws PLCException {
+        output.append("import java.io.*;\n");
+        output.append("public class ");
+        output.append(program.getIdent().getName());
+        output.append(" {\npublic static ");
+        output.append(type_to_string(program.getType()));
+        output.append(" apply(");
+        //params
+        List<NameDef> paramList = program.getParamList();
+        int size = paramList.size();
+        for(int i = 0; i < size-1; i++){
+            paramList.get(i).visit(this,arg);
+            output.append(",");
+        }
+        if(size > 0){
+        paramList.get(size - 1).visit(this,arg);}
+        output.append(") {\n");
+        //blocks
+        program.getBlock().visit(this,arg);
+        output.append("}\n}");//the second } was not in documentation but is necessary to be a valid java class
+        return output.toString();
+    }
+    public Object visitRandomExpr(RandomExpr randomExpr, Object arg) throws PLCException {
+        //generate code for a random int [0,265)
+        output.append("Math.floor(Math.random() * 256)");
+        return null;
+    }
+    public Object visitReturnStatement(ReturnStatement returnStatement, Object arg) throws PLCException {
+        //confirm if this is what the instructions mean
+        output.append("return ");
+        returnStatement.getE().visit(this,arg);
+        return null;
+    }
+    public Object visitStringLitExpr(StringLitExpr stringLitExpr, Object arg) throws PLCException {
+        output.append(stringLitExpr.getValue());
+        return null;
+    }
+    public Object visitUnaryExpr(UnaryExpr unaryExpr, Object arg) throws PLCException {
+        //do not implement in Assignment 5
+        throw new UnsupportedOperationException("visitUnaryExpr");
+    }
+    public Object visitUnaryExprPostFix(UnaryExprPostfix unaryExprPostfix, Object arg) throws PLCException {
+        //do not implement in Assignment 5
+        throw new UnsupportedOperationException("visitUnaryExprPostFix");
+    }
+
+    public Object visitWhileStatement(WhileStatement whileStatement, Object arg) throws PLCException {
+        Expr expr = whileStatement.getGuard();
+        Block block = whileStatement.getBlock();
+        output.append("while (");
+        expr.visit(this,arg);
+        output.append(") {\n");
+        block.visit(this,arg);
+        output.append("}");
+        return null;
+    }
+
+    public Object visitWriteStatement(WriteStatement statementWrite, Object arg) throws PLCException {
+        output.append("ConsoleIO.write(");
+        statementWrite.getE().visit(this,arg);
+        output.append(")");
+        return null;
+    }
+
+    public Object visitZExpr(ZExpr zExpr, Object arg) throws PLCException {
+        output.append(255);
+        return null;
+    }
+}
