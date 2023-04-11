@@ -18,7 +18,7 @@ public class IdentExpr extends Expr {
 	public IdentExpr(IToken firstToken) {
 		super(firstToken);
 	}
-
+	public NameDef nameDef;
 	@Override
 	public Object visit(ASTVisitor v, Object arg) throws PLCException {
 		return v.visitIdentExpr(this,arg);
@@ -27,7 +27,9 @@ public class IdentExpr extends Expr {
 	public String getName() {
 		return firstToken.getTokenString();
 	}
-
+	public NameDef getNameDef(){
+		return nameDef;
+	}
 	@Override
 	public String toString() {
 		return "IdentExpr [firstToken=" + firstToken + "]";

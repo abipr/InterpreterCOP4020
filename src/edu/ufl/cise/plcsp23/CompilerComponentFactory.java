@@ -31,6 +31,6 @@ public class CompilerComponentFactory {
 	}
 	public static ASTVisitor makeCodeGenerator(String packageName) throws PLCException {
 		//code to instantiate a return an ASTVisitor for code generation
-		return new codeGenerator();
+		return new codeGenerator(packageName);
 	}
 }

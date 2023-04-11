@@ -8,8 +8,13 @@ public class codeGenerator implements ASTVisitor {
     //start with the simple ones with literal code
     //code gen for project
     StringBuilder output;
+    String packageName;
     codeGenerator(){
         output = new StringBuilder();
+    }
+    codeGenerator(String packageName){
+        output = new StringBuilder();
+        this.packageName = packageName;
     }
     String type_to_string(Type type){
         String javaType = "";
@@ -35,7 +40,9 @@ public class codeGenerator implements ASTVisitor {
     public Object visitAssignmentStatement(AssignmentStatement statementAssign, Object arg) throws PLCException {
         statementAssign.getLv().visit(this,arg);
         output.append("=");
-        statementAssign.getE().visit(this,arg);
+        Expr expr = statementAssign.getE();
+        Type type = expr.getType();
+        expr.visit(this,arg);
         return null;
     }
 
@@ -43,56 +50,102 @@ public class codeGenerator implements ASTVisitor {
         output.append("(");
 
         Expr e0 = binaryExpr.getLeft();//gotten child of binexpr
-        e0.visit(this, arg);
+        //e0.visit(this, arg);
+        Expr e1 = binaryExpr.getRight();
+        //e1.visit(this, arg);
         switch(binaryExpr.getOp()){
             case PLUS -> {
+                e0.visit(this, arg);
                 output.append("+");
+                e1.visit(this, arg);
             }
             case MINUS -> {
+                e0.visit(this, arg);
                 output.append("-");
+                e1.visit(this, arg);
             }
             case TIMES -> {
+                e0.visit(this, arg);
                 output.append("*");
+                e1.visit(this, arg);
             }
             case DIV -> {
+                e0.visit(this, arg);
                 output.append("/");
+                e1.visit(this, arg);
             }
             case MOD -> {
+                e0.visit(this, arg);
                 output.append("%");
+                e1.visit(this, arg);
             }
             case LT -> {
+                output.append("((");
+                e0.visit(this, arg);
                 output.append("<");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
             }
             case GT -> {
+                output.append("((");
+                e0.visit(this, arg);
                 output.append(">");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
             }
             case LE -> {
+                output.append("((");
+                e0.visit(this, arg);
                 output.append("<=");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
             }
             case GE -> {
+                output.append("((");
+                e0.visit(this, arg);
                 output.append(">=");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
             }
             case EQ -> {
+                output.append("((");
+                e0.visit(this, arg);
                 output.append("==");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
             }
             case OR -> {
+                output.append("((");
+                e0.visit(this, arg);
                 output.append("||");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
             }
             case AND -> {
+                output.append("((");
+                e0.visit(this, arg);
                 output.append("&&");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
             }
             case BITOR -> {
+                e0.visit(this, arg);
                 output.append("|");
+                e1.visit(this, arg);
             }
             case BITAND -> {
+                e0.visit(this, arg);
                 output.append("&");
+                e1.visit(this, arg);
             }
             case EXP -> {
+                e0.visit(this, arg);
                 output.append("**");
+                e1.visit(this, arg);
+
             }
         }
-        Expr e1 = binaryExpr.getRight();
-        e1.visit(this, arg);
+
         output.append(")");
         return null;
     }
@@ -117,8 +170,9 @@ public class codeGenerator implements ASTVisitor {
         e1 = conditionalExpr.getTrueCase();
         e2 = conditionalExpr.getFalseCase();
 
-        output.append("(");
+        output.append("((");
         e0.visit(this,arg);//may need to revisit because java expects boolean
+        output.append("!=0)");
         output.append(" ? ");
         e1.visit(this,arg);
         output.append(" : ");
@@ -151,10 +205,14 @@ public class codeGenerator implements ASTVisitor {
 
     public Object visitIdentExpr(IdentExpr identExpr, Object arg) throws PLCException {
         output.append(identExpr.getName());
+        if(identExpr.getNameDef() != null){
+        output.append(identExpr.getNameDef().getScopeID());}
         return null;
     }
+    //find way to store scope
     public Object visitLValue(LValue lValue, Object arg) throws PLCException {
         output.append(lValue.getIdent().getName());
+        output.append(lValue.nameDef.getScopeID());
         //only handle the case where there is no PixelSelector and no ChannelSelector
         return null;
     }
@@ -162,6 +220,7 @@ public class codeGenerator implements ASTVisitor {
         output.append(type_to_string(nameDef.getType()));
         output.append(" ");
         output.append(nameDef.getIdent().getName());
+        output.append(nameDef.scopeID);
         return null;
     }
     public Object visitNumLitExpr(NumLitExpr numLitExpr, Object arg) throws PLCException {
@@ -181,7 +240,12 @@ public class codeGenerator implements ASTVisitor {
         throw new UnsupportedOperationException("visitPredeclaredVarExpr");
     }
     public Object visitProgram(Program program, Object arg) throws PLCException {
-        output.append("import java.io.*;\n");
+        if(packageName != ""){
+            output.append("package ");
+            output.append(packageName);
+            output.append(";\n");
+        }
+        output.append("import edu.ufl.cise.plcsp23.runtime;\n");
         output.append("public class ");
         output.append(program.getIdent().getName());
         output.append(" {\npublic static ");
@@ -214,7 +278,10 @@ public class codeGenerator implements ASTVisitor {
         return null;
     }
     public Object visitStringLitExpr(StringLitExpr stringLitExpr, Object arg) throws PLCException {
+        //added quotes around the strings
+        output.append("\"");
         output.append(stringLitExpr.getValue());
+        output.append("\"");
         return null;
     }
     public Object visitUnaryExpr(UnaryExpr unaryExpr, Object arg) throws PLCException {
@@ -231,6 +298,7 @@ public class codeGenerator implements ASTVisitor {
         Block block = whileStatement.getBlock();
         output.append("while (");
         expr.visit(this,arg);
+        output.append("!=0");
         output.append(") {\n");
         block.visit(this,arg);
         output.append("}");

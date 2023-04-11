@@ -18,7 +18,7 @@ public class NameDef extends AST {
 	final Type type;
 	final Dimension dimension;
 	final Ident ident;
-	
+	public Integer scopeID;
 	public NameDef(IToken firstToken, Type type, Dimension dimension, Ident ident) {
 		super(firstToken);
 		this.type = type;
@@ -30,7 +30,7 @@ public class NameDef extends AST {
 	public Object visit(ASTVisitor v, Object arg) throws PLCException {
 		return v.visitNameDef(this, arg);
 	}
-
+	public Integer getScopeID(){return scopeID; }
 	public Type getType() {
 		return type;
 	}

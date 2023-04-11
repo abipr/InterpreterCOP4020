@@ -26,8 +26,9 @@ public class Visitor implements ASTVisitor{
             }
         }
         Stack<Integer> scope = new Stack<Integer>();
-        Integer currentScope = 0;
+        public Integer currentScope = 0;
         HashMap<String, List<node>> entries = new HashMap<>();
+
         //returns true if name successfully inserted in symbol table, false if already present
         public boolean insert(String name, NameDef def){
             if(entries.get(name)==null){
@@ -51,6 +52,7 @@ public class Visitor implements ASTVisitor{
                 for(Integer i=scope.size()-1;i>=0;i--){
                     for (node n:list) {
                         if (scope.get(i) == n.scopeID) {
+                            n.def.scopeID = n.scopeID;//set scope id
                             return n.def;
                         }
                     }
@@ -78,6 +80,8 @@ public class Visitor implements ASTVisitor{
             scope.pop();
         }
     }
+    //name scoping
+
     SymbolTable symbolTable = new SymbolTable();
     Type programType;
     boolean assignmentCompatible(Type lhsType, Type rhsType){
@@ -289,10 +293,11 @@ public class Visitor implements ASTVisitor{
     }
     public Object visitIdentExpr(IdentExpr identExpr, Object arg) throws PLCException {
         //Constraints:IdentExpr.name has been defined and is visible in this scope
-        NameDef nameDef = symbolTable.lookup(identExpr.getName());
+        NameDef nameDef = symbolTable.lookup(identExpr.getName());//if in table, sets nameDef's scopeID
         check((nameDef != null),"undefined variable: " + identExpr.getName());
         //IdentExpr.type ← NameDef.type
         identExpr.setType(nameDef.getType());
+        identExpr.nameDef = nameDef;
         return null;
     }
 
@@ -303,6 +308,7 @@ public class Visitor implements ASTVisitor{
         String name = lValue.getIdent().getName();
         NameDef nameDef = symbolTable.lookup(name);
         check((nameDef != null),"undefined variable: " + name);
+        lValue.nameDef = nameDef;
         boolean pixel,channel;
         pixel = (lValue.getPixelSelector() != null);//yes=true
         channel = (lValue.getColor() != null);//yes=true

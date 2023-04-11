@@ -18,7 +18,7 @@ public class LValue extends AST {
 	final Ident ident;
 	final PixelSelector pixelSelector;
 	final ColorChannel color;
-
+	public NameDef nameDef;
 	public LValue(IToken firstToken, Ident ident, PixelSelector pixelSelector, ColorChannel color) {
 		super(firstToken);
 		this.ident = ident;
