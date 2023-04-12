@@ -103,6 +103,7 @@ public class Visitor implements ASTVisitor{
         //LValue is properly typed
         LValue lvalue = statementAssign.getLv();
         Type l = (Type)lvalue.visit(this,arg);
+        lvalue.type = l;
         //Expr is properly typed
         Expr expr = statementAssign.getE();
         expr.visit(this,arg);
@@ -317,6 +318,7 @@ public class Visitor implements ASTVisitor{
             case INT -> {
                 //pixelSelector null
                 if(!pixel && !channel){
+                    lValue.type = Type.INT;
                     return Type.INT;
                 }else{
                     throw new TypeCheckException("lvalue has a pixel or channel selector");
@@ -325,6 +327,7 @@ public class Visitor implements ASTVisitor{
             case STRING -> {
                 //pixelSelector null
                 if(!pixel && !channel){
+                    lValue.type = Type.STRING;
                     return Type.STRING;
                 }else{
                     throw new TypeCheckException("lvalue has a pixel or channel selector");
@@ -333,9 +336,11 @@ public class Visitor implements ASTVisitor{
             case PIXEL -> {
                 //pixelSelector null
                 if(!pixel && !channel){
+                    lValue.type = Type.PIXEL;
                     return Type.PIXEL;
                 }
                 else if (!pixel && channel) {
+                    lValue.type = Type.INT;
                     return Type.INT;
                 } else{
                     throw new TypeCheckException("lvalue has a pixel or channel selector");
@@ -343,11 +348,14 @@ public class Visitor implements ASTVisitor{
             }
             case IMAGE -> {
                 if(!pixel){
+                    lValue.type = Type.IMAGE;
                     return Type.IMAGE;
                 }else{
                     if(!channel){
+                        lValue.type = Type.PIXEL;
                         return Type.PIXEL;
                     }else{
+                        lValue.type = Type.INT;
                         return Type.INT;
                     }
                 }

@@ -1,12 +1,10 @@
 package edu.ufl.cise.plcsp23;
 
 import edu.ufl.cise.plcsp23.ast.*;
-
 import java.util.List;
+import static edu.ufl.cise.plcsp23.ast.Type.*;
 
 public class codeGenerator implements ASTVisitor {
-    //start with the simple ones with literal code
-    //code gen for project
     StringBuilder output;
     String packageName;
     codeGenerator(){
@@ -38,45 +36,50 @@ public class codeGenerator implements ASTVisitor {
         return javaType;
     }
     public Object visitAssignmentStatement(AssignmentStatement statementAssign, Object arg) throws PLCException {
-        statementAssign.getLv().visit(this,arg);
-        output.append("=");
+        LValue lValue = statementAssign.getLv();
         Expr expr = statementAssign.getE();
-        Type type = expr.getType();
-        expr.visit(this,arg);
+        lValue.visit(this,arg);
+        output.append("=");
+        if(lValue.type != STRING){
+            expr.visit(this,arg);
+        }else{
+            if(expr.getType() == INT){
+                expr.visit(this,arg);
+                output.append(".toString()");
+            }else{
+                expr.visit(this,arg);
+            }
+        }
         return null;
     }
-
     public Object visitBinaryExpr(BinaryExpr binaryExpr, Object arg) throws PLCException {
         output.append("(");
-
-        Expr e0 = binaryExpr.getLeft();//gotten child of binexpr
-        //e0.visit(this, arg);
+        Expr e0 = binaryExpr.getLeft();
         Expr e1 = binaryExpr.getRight();
-        //e1.visit(this, arg);
         switch(binaryExpr.getOp()){
             case PLUS -> {
                 e0.visit(this, arg);
-                output.append("+");
+                output.append(" + ");
                 e1.visit(this, arg);
             }
             case MINUS -> {
                 e0.visit(this, arg);
-                output.append("-");
+                output.append(" - ");
                 e1.visit(this, arg);
             }
             case TIMES -> {
                 e0.visit(this, arg);
-                output.append("*");
+                output.append(" * ");
                 e1.visit(this, arg);
             }
             case DIV -> {
                 e0.visit(this, arg);
-                output.append("/");
+                output.append(" / ");
                 e1.visit(this, arg);
             }
             case MOD -> {
                 e0.visit(this, arg);
-                output.append("%");
+                output.append(" % ");
                 e1.visit(this, arg);
             }
             case LT -> {
@@ -115,55 +118,59 @@ public class codeGenerator implements ASTVisitor {
                 output.append(") ? 1 : 0)");
             }
             case OR -> {
-                output.append("((");
+                output.append("(((");
                 e0.visit(this, arg);
-                output.append("||");
+                output.append("!= 0)");
+                output.append("|| (");
                 e1.visit(this, arg);
+                output.append("!= 0)");
                 output.append(") ? 1 : 0)");
             }
             case AND -> {
-                output.append("((");
+                output.append("(((");
                 e0.visit(this, arg);
-                output.append("&&");
+                output.append("!= 0)");
+                output.append("&& (");
                 e1.visit(this, arg);
+                output.append("!= 0)");
                 output.append(") ? 1 : 0)");
             }
             case BITOR -> {
                 e0.visit(this, arg);
-                output.append("|");
+                output.append(" | ");
                 e1.visit(this, arg);
             }
             case BITAND -> {
                 e0.visit(this, arg);
-                output.append("&");
+                output.append(" & ");
                 e1.visit(this, arg);
             }
             case EXP -> {
+                output.append("(int) Math.pow(");
                 e0.visit(this, arg);
-                output.append("**");
+                output.append(", ");
                 e1.visit(this, arg);
-
+                output.append(")");
             }
         }
-
         output.append(")");
         return null;
     }
-
     public Object visitBlock(Block block, Object arg) throws PLCException {
         //visit Declarations
         for (Declaration dec:block.getDecList()) {
             dec.visit(this,arg);
-            output.append(";");
+            output.append(";\n");
         }
         //visit Statements
         for (Statement statement:block.getStatementList()) {
             statement.visit(this,arg);
-            output.append(";");
+            if(statement.toString().charAt(0) != 'W'){
+                output.append(";\n");
+            }
         }
         return null;
     }
-
     public Object visitConditionalExpr(ConditionalExpr conditionalExpr, Object arg) throws PLCException {
         Expr e0,e1,e2;
         e0 = conditionalExpr.getGuard();
@@ -171,7 +178,7 @@ public class codeGenerator implements ASTVisitor {
         e2 = conditionalExpr.getFalseCase();
 
         output.append("((");
-        e0.visit(this,arg);//may need to revisit because java expects boolean
+        e0.visit(this,arg);
         output.append("!=0)");
         output.append(" ? ");
         e1.visit(this,arg);
@@ -180,13 +187,16 @@ public class codeGenerator implements ASTVisitor {
         output.append(")");
         return null;
     }
-
     public Object visitDeclaration(Declaration declaration, Object arg) throws PLCException {
-        declaration.getNameDef().visit(this,arg);
+        NameDef nameDef = declaration.getNameDef();
+        nameDef.visit(this,arg);
         Expr expr = declaration.getInitializer();
         if(expr != null){
             output.append("=");
             expr.visit(this,arg);
+            if(expr.getType() == INT && nameDef.getType() == STRING){
+                output.append(".toString()");
+            }
         }
         return null;
     }
@@ -198,18 +208,15 @@ public class codeGenerator implements ASTVisitor {
         //do not implement in Assignment 5
         throw new UnsupportedOperationException("visitExpandedPixelExpr");
     }
-
     public Object visitIdent(Ident ident, Object arg) throws PLCException {
         return null;
     }
-
     public Object visitIdentExpr(IdentExpr identExpr, Object arg) throws PLCException {
         output.append(identExpr.getName());
         if(identExpr.getNameDef() != null){
         output.append(identExpr.getNameDef().getScopeID());}
         return null;
     }
-    //find way to store scope
     public Object visitLValue(LValue lValue, Object arg) throws PLCException {
         output.append(lValue.getIdent().getName());
         output.append(lValue.nameDef.getScopeID());
@@ -245,7 +252,7 @@ public class codeGenerator implements ASTVisitor {
             output.append(packageName);
             output.append(";\n");
         }
-        output.append("import edu.ufl.cise.plcsp23.runtime;\n");
+        output.append("import edu.ufl.cise.plcsp23.runtime.ConsoleIO;\n");
         output.append("public class ");
         output.append(program.getIdent().getName());
         output.append(" {\npublic static ");
@@ -268,11 +275,10 @@ public class codeGenerator implements ASTVisitor {
     }
     public Object visitRandomExpr(RandomExpr randomExpr, Object arg) throws PLCException {
         //generate code for a random int [0,265)
-        output.append("Math.floor(Math.random() * 256)");
+        output.append("(int) Math.floor(Math.random() * 256)");
         return null;
     }
     public Object visitReturnStatement(ReturnStatement returnStatement, Object arg) throws PLCException {
-        //confirm if this is what the instructions mean
         output.append("return ");
         returnStatement.getE().visit(this,arg);
         return null;
@@ -292,28 +298,25 @@ public class codeGenerator implements ASTVisitor {
         //do not implement in Assignment 5
         throw new UnsupportedOperationException("visitUnaryExprPostFix");
     }
-
     public Object visitWhileStatement(WhileStatement whileStatement, Object arg) throws PLCException {
         Expr expr = whileStatement.getGuard();
         Block block = whileStatement.getBlock();
         output.append("while (");
         expr.visit(this,arg);
-        output.append("!=0");
+        output.append(" != 0");
         output.append(") {\n");
         block.visit(this,arg);
         output.append("}");
         return null;
     }
-
     public Object visitWriteStatement(WriteStatement statementWrite, Object arg) throws PLCException {
         output.append("ConsoleIO.write(");
         statementWrite.getE().visit(this,arg);
         output.append(")");
         return null;
     }
-
     public Object visitZExpr(ZExpr zExpr, Object arg) throws PLCException {
-        output.append(255);
-        return null;
+        output.append(zExpr.getValue());
+        return zExpr.getValue();
     }
 }
