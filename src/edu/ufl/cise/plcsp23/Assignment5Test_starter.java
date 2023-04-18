@@ -1066,10 +1066,4 @@ class Assignment5Test_extra {
 		Assertions.assertTrue(i >= 0 && i <= 255);
 		assertEquals(Integer.class, result.getClass());
 	}
-
-
-
-
-
-
 }
