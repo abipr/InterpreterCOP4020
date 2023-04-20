@@ -1,9 +1,22 @@
 package edu.ufl.cise.plcsp23;
 
 import edu.ufl.cise.plcsp23.ast.*;
-import java.util.List;
-import static edu.ufl.cise.plcsp23.ast.Type.*;
 
+import java.util.List;
+
+import static edu.ufl.cise.plcsp23.ast.Type.*;
+/*
+* Start with the most explicit ones
+*
+* BinaryExpr
+* UnaryExprPostfix
+* Declaration
+*
+*
+*
+* Handle Channel Selector in Assignment Statement for LValue
+* Assignment Statement last
+* */
 public class codeGenerator implements ASTVisitor {
     StringBuilder output;
     String packageName;
@@ -201,12 +214,20 @@ public class codeGenerator implements ASTVisitor {
         return null;
     }
     public Object visitDimension(Dimension dimension, Object arg) throws PLCException {
-        //do not implement in Assignment 5
-        throw new UnsupportedOperationException("visitDimension");
+        dimension.getWidth().visit(this,arg);
+        output.append(", ");
+        dimension.getHeight().visit(this,arg);
+        return null;
     }
     public Object visitExpandedPixelExpr(ExpandedPixelExpr expandedPixelExpr, Object arg) throws PLCException {
-        //do not implement in Assignment 5
-        throw new UnsupportedOperationException("visitExpandedPixelExpr");
+        output.append("PixelOps.pack(");
+        expandedPixelExpr.getRedExpr().visit(this,arg);
+        output.append(", ");
+        expandedPixelExpr.getGrnExpr().visit(this,arg);
+        output.append(", ");
+        expandedPixelExpr.getBluExpr().visit(this,arg);
+        output.append(")");
+        return null;
     }
     public Object visitIdent(Ident ident, Object arg) throws PLCException {
         return null;
@@ -224,7 +245,14 @@ public class codeGenerator implements ASTVisitor {
         return null;
     }
     public Object visitNameDef(NameDef nameDef, Object arg) throws PLCException {
-        output.append(type_to_string(nameDef.getType()));
+        if(nameDef.getType() == PIXEL){
+            output.append("int");
+        }
+        else if (nameDef.getType() == IMAGE) {
+            output.append("BufferedImage");
+        } else{
+            output.append(type_to_string(nameDef.getType()));
+        }
         output.append(" ");
         output.append(nameDef.getIdent().getName());
         output.append(nameDef.scopeID);
@@ -239,12 +267,25 @@ public class codeGenerator implements ASTVisitor {
         throw new UnsupportedOperationException("visitPixelFuncExpr");
     }
     public Object visitPixelSelector(PixelSelector pixelSelector, Object arg) throws PLCException {
-        //do not implement in Assignment 5
-        throw new UnsupportedOperationException("visitPixelSelector");
+        pixelSelector.getX().visit(this,arg);
+        output.append(", ");
+        pixelSelector.getY().visit(this,arg);
+        return null;
     }
     public Object visitPredeclaredVarExpr(PredeclaredVarExpr predeclaredVarExpr, Object arg) throws PLCException {
-        //do not implement in Assignment 5
-        throw new UnsupportedOperationException("visitPredeclaredVarExpr");
+        //only outputs x and y
+        IToken.Kind k = predeclaredVarExpr.getKind();
+        if(k == IToken.Kind.RES_x){
+            output.append("x");
+            return null;
+        }
+        else if(k == IToken.Kind.RES_y){
+            output.append("y");
+            return null;
+        }
+        else{
+            throw new UnsupportedOperationException("visitPredeclaredVarExpr");
+        }
     }
     public Object visitProgram(Program program, Object arg) throws PLCException {
         if(packageName != ""){
@@ -291,8 +332,25 @@ public class codeGenerator implements ASTVisitor {
         return null;
     }
     public Object visitUnaryExpr(UnaryExpr unaryExpr, Object arg) throws PLCException {
-        //do not implement in Assignment 5
-        throw new UnsupportedOperationException("visitUnaryExpr");
+        //how does the case where it is an Ident with type int
+
+        IToken.Kind op = unaryExpr.getOp();
+        Expr expr = unaryExpr.getE();
+        if(expr.getType() == INT){
+            if(op == IToken.Kind.BANG){
+                expr.visit(this,arg);
+                output.append("==0 ? 1 : 0");
+                return null;
+            } else if (op == IToken.Kind.MINUS) {
+                output.append("-");
+                expr.visit(this,arg);
+                return null;
+            }else{
+                throw new UnsupportedOperationException("visitUnaryExpr");
+            }
+        }else{
+            throw new UnsupportedOperationException("visitUnaryExpr");
+        }
     }
     public Object visitUnaryExprPostFix(UnaryExprPostfix unaryExprPostfix, Object arg) throws PLCException {
         //do not implement in Assignment 5
@@ -310,8 +368,14 @@ public class codeGenerator implements ASTVisitor {
         return null;
     }
     public Object visitWriteStatement(WriteStatement statementWrite, Object arg) throws PLCException {
-        output.append("ConsoleIO.write(");
-        statementWrite.getE().visit(this,arg);
+        Expr expr = statementWrite.getE();
+        if(expr.getType() == PIXEL){
+            output.append("ConsoleIO.writePixel(");
+        }
+        else{
+            output.append("ConsoleIO.write(");
+        }
+        expr.visit(this,arg);
         output.append(")");
         return null;
     }

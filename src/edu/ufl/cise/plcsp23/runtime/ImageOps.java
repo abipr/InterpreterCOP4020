@@ -10,14 +10,11 @@
 
 package edu.ufl.cise.plcsp23.runtime;
 
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
-
-import edu.ufl.cise.plcsp23.PLCRuntimeException;
-
 
 /**
  * An image is represented by a 2D array of pixels. An image is implemented as
