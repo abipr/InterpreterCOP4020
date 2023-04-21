@@ -1,6 +1,7 @@
 package edu.ufl.cise.plcsp23;
 
 import edu.ufl.cise.plcsp23.ast.*;
+import edu.ufl.cise.plcsp23.runtime.*;
 
 import java.util.List;
 
@@ -51,121 +52,223 @@ public class codeGenerator implements ASTVisitor {
     public Object visitAssignmentStatement(AssignmentStatement statementAssign, Object arg) throws PLCException {
         LValue lValue = statementAssign.getLv();
         Expr expr = statementAssign.getE();
-        lValue.visit(this,arg);
-        output.append("=");
-        if(lValue.type != STRING){
-            expr.visit(this,arg);
-        }else{
+
+        if(lValue.type == STRING){
             if(expr.getType() == INT){
+                lValue.visit(this,arg);
+                output.append("=");
                 expr.visit(this,arg);
                 output.append(".toString()");
             }else{
+                lValue.visit(this,arg);
+                output.append("=");
                 expr.visit(this,arg);
             }
+        }else if(lValue.type == PIXEL){
+            lValue.visit(this,arg);
+            output.append("=");
+            expr.visit(this, arg);
+        }else if(lValue.type == IMAGE){
+            PixelSelector pixelSelector = lValue.getPixelSelector();
+            ColorChannel color = lValue.getColor();
+            if(pixelSelector == null){
+                if(color == null){
+                    switch(expr.getType()){
+                        case STRING -> {
+                            output.append("ImageOps.copyInto(");
+                            output.append("FileURLIO.readImage(");
+                            expr.visit(this, arg);
+                            output.append("), ");
+                            lValue.visit(this,arg);
+                            output.append(")");
+                        }
+                        case IMAGE -> {
+                            //get size of LValue image
+                            //resize expr image to those dimensions
+                            //ImageOps.copyInto()
+                        }
+                        case PIXEL -> {
+
+                        }
+                        default -> {
+                            throw new PLCRuntimeException("unexpected expr type");
+                        }
+                    }
+                }else{
+                    throw new PLCRuntimeException("no pixel selector, but has color channel");
+                }
+            }else{
+                if(color == null){//Variable type is image with pixel selector, no color channel
+                    //3 lectures ago, April 12th
+
+                }else{//Variable type is image with pixel selector and color channel
+
+                }
+            }
+        }
+        else{
+            lValue.visit(this,arg);
+            output.append("=");
+            expr.visit(this,arg);
         }
         return null;
     }
+
     public Object visitBinaryExpr(BinaryExpr binaryExpr, Object arg) throws PLCException {
         output.append("(");
         Expr e0 = binaryExpr.getLeft();
         Expr e1 = binaryExpr.getRight();
+        Type t0 = e0.getType();
+        Type t1 = e1.getType();
+        String op = null;
         switch(binaryExpr.getOp()){
             case PLUS -> {
-                e0.visit(this, arg);
-                output.append(" + ");
-                e1.visit(this, arg);
+                op = "ImageOps.OP.PLUS";
             }
             case MINUS -> {
-                e0.visit(this, arg);
-                output.append(" - ");
-                e1.visit(this, arg);
+                op = "ImageOps.OP.MINUS";
             }
             case TIMES -> {
-                e0.visit(this, arg);
-                output.append(" * ");
-                e1.visit(this, arg);
+                op = "ImageOps.OP.TIMES";
             }
             case DIV -> {
-                e0.visit(this, arg);
-                output.append(" / ");
-                e1.visit(this, arg);
+                op = "ImageOps.OP.DIV";
             }
             case MOD -> {
-                e0.visit(this, arg);
-                output.append(" % ");
-                e1.visit(this, arg);
-            }
-            case LT -> {
-                output.append("((");
-                e0.visit(this, arg);
-                output.append("<");
-                e1.visit(this, arg);
-                output.append(") ? 1 : 0)");
-            }
-            case GT -> {
-                output.append("((");
-                e0.visit(this, arg);
-                output.append(">");
-                e1.visit(this, arg);
-                output.append(") ? 1 : 0)");
-            }
-            case LE -> {
-                output.append("((");
-                e0.visit(this, arg);
-                output.append("<=");
-                e1.visit(this, arg);
-                output.append(") ? 1 : 0)");
-            }
-            case GE -> {
-                output.append("((");
-                e0.visit(this, arg);
-                output.append(">=");
-                e1.visit(this, arg);
-                output.append(") ? 1 : 0)");
-            }
-            case EQ -> {
-                output.append("((");
-                e0.visit(this, arg);
-                output.append("==");
-                e1.visit(this, arg);
-                output.append(") ? 1 : 0)");
-            }
-            case OR -> {
-                output.append("(((");
-                e0.visit(this, arg);
-                output.append("!= 0)");
-                output.append("|| (");
-                e1.visit(this, arg);
-                output.append("!= 0)");
-                output.append(") ? 1 : 0)");
-            }
-            case AND -> {
-                output.append("(((");
-                e0.visit(this, arg);
-                output.append("!= 0)");
-                output.append("&& (");
-                e1.visit(this, arg);
-                output.append("!= 0)");
-                output.append(") ? 1 : 0)");
-            }
-            case BITOR -> {
-                e0.visit(this, arg);
-                output.append(" | ");
-                e1.visit(this, arg);
-            }
-            case BITAND -> {
-                e0.visit(this, arg);
-                output.append(" & ");
-                e1.visit(this, arg);
-            }
-            case EXP -> {
-                output.append("(int) Math.pow(");
-                e0.visit(this, arg);
-                output.append(", ");
-                e1.visit(this, arg);
-                output.append(")");
+                op = "ImageOps.OP.MOD";
             }
         }
+
+        if(t0 == IMAGE){
+            if(t1 == IMAGE){
+
+                output.append("ImageOps.binaryImageImageOp(" +op+", ");
+                e0.visit(this,arg);
+                output.append(", ");
+                e1.visit(this,arg);
+                output.append(")");
+            }
+            else if(t1 == INT){
+                output.append("ImageOps.binaryImageScalarOp(" + op+", ");
+                e0.visit(this,arg);
+                output.append(", ");
+                e1.visit(this,arg);
+                output.append(")");
+
+            }else{
+                throw new PLCRuntimeException("e0 is a Image and e1 is incompatible");
+            }
+        }else if(t0 == PIXEL){
+            if(t1 == PIXEL){
+                output.append("ImageOps.binaryImagePixelOp("+op+", ");
+                e0.visit(this,arg);
+                output.append(", ");
+                e1.visit(this,arg);
+                output.append(")");
+            }else{
+                throw new PLCRuntimeException("e0 is a Pixel and e1 is incompatible");
+            }
+        }
+        else{
+            switch(binaryExpr.getOp()){
+                case PLUS -> {
+                    e0.visit(this, arg);
+                    output.append(" + ");
+                    e1.visit(this, arg);
+                }
+                case MINUS -> {
+                    e0.visit(this, arg);
+                    output.append(" - ");
+                    e1.visit(this, arg);
+                }
+                case TIMES -> {
+                    e0.visit(this, arg);
+                    output.append(" * ");
+                    e1.visit(this, arg);
+                }
+                case DIV -> {
+                    e0.visit(this, arg);
+                    output.append(" / ");
+                    e1.visit(this, arg);
+                }
+                case MOD -> {
+                    e0.visit(this, arg);
+                    output.append(" % ");
+                    e1.visit(this, arg);
+                }
+                case LT -> {
+                    output.append("((");
+                    e0.visit(this, arg);
+                    output.append("<");
+                    e1.visit(this, arg);
+                    output.append(") ? 1 : 0)");
+                }
+                case GT -> {
+                    output.append("((");
+                    e0.visit(this, arg);
+                    output.append(">");
+                    e1.visit(this, arg);
+                    output.append(") ? 1 : 0)");
+                }
+                case LE -> {
+                    output.append("((");
+                    e0.visit(this, arg);
+                    output.append("<=");
+                    e1.visit(this, arg);
+                    output.append(") ? 1 : 0)");
+                }
+                case GE -> {
+                    output.append("((");
+                    e0.visit(this, arg);
+                    output.append(">=");
+                    e1.visit(this, arg);
+                    output.append(") ? 1 : 0)");
+                }
+                case EQ -> {
+                    output.append("((");
+                    e0.visit(this, arg);
+                    output.append("==");
+                    e1.visit(this, arg);
+                    output.append(") ? 1 : 0)");
+                }
+                case OR -> {
+                    output.append("(((");
+                    e0.visit(this, arg);
+                    output.append("!= 0)");
+                    output.append("|| (");
+                    e1.visit(this, arg);
+                    output.append("!= 0)");
+                    output.append(") ? 1 : 0)");
+                }
+                case AND -> {
+                    output.append("(((");
+                    e0.visit(this, arg);
+                    output.append("!= 0)");
+                    output.append("&& (");
+                    e1.visit(this, arg);
+                    output.append("!= 0)");
+                    output.append(") ? 1 : 0)");
+                }
+                case BITOR -> {
+                    e0.visit(this, arg);
+                    output.append(" | ");
+                    e1.visit(this, arg);
+                }
+                case BITAND -> {
+                    e0.visit(this, arg);
+                    output.append(" & ");
+                    e1.visit(this, arg);
+                }
+                case EXP -> {
+                    output.append("(int) Math.pow(");
+                    e0.visit(this, arg);
+                    output.append(", ");
+                    e1.visit(this, arg);
+                    output.append(")");
+                }
+            }
+        }
+
         output.append(")");
         return null;
     }
