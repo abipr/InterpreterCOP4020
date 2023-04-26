@@ -6,18 +6,7 @@ import edu.ufl.cise.plcsp23.runtime.*;
 import java.util.List;
 
 import static edu.ufl.cise.plcsp23.ast.Type.*;
-/*
-* Start with the most explicit ones
-*
-* BinaryExpr
-* UnaryExprPostfix
-*
-*
-*
-* Declaration
-* Handle Channel Selector in Assignment Statement for LValue
-* Assignment Statement last
-* */
+
 public class codeGenerator implements ASTVisitor {
     StringBuilder output;
     String packageName;
@@ -181,7 +170,7 @@ public class codeGenerator implements ASTVisitor {
         Expr e1 = binaryExpr.getRight();
         Type t0 = e0.getType();
         Type t1 = e1.getType();
-        String op = null;
+        String op;
         switch(binaryExpr.getOp()){
             case PLUS -> {
                 op = "ImageOps.OP.PLUS";
@@ -198,165 +187,328 @@ public class codeGenerator implements ASTVisitor {
             case MOD -> {
                 op = "ImageOps.OP.MOD";
             }
-            case EQ -> {
-                op = "ImageOps.BoolOP.EQUALS";
+            default -> {
+                 op = "invalid op";
             }
 
         }
 
-        if(t0 == IMAGE){
-            if(t1 == IMAGE){
-                if(binaryExpr.getOp() == IToken.Kind.EQ){
-                    output.append("ImageOps.equalsForCodeGen(");
-                    e0.visit(this,arg);
-                    output.append(", ");
-                    e1.visit(this,arg);
-                    output.append(")");
+
+
+        switch(binaryExpr.getOp()){
+            case PLUS -> {
+                if(t0==IMAGE){
+                    if(t1==IMAGE){
+                        output.append("ImageOps.binaryImageImageOp(" +op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else if(t1 == INT){
+                        output.append("ImageOps.binaryImageScalarOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+
+                    }else if(t1 == PIXEL){
+                        output.append("ImageOps.binaryImagePixelOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else{
+                        throw new PLCRuntimeException("e0 is a Image and e1 is incompatible");
+                    }
+                }else if(t0 == PIXEL) {
+                    if (t1 == PIXEL) {
+                        output.append("ImageOps.binaryPackedPixelPixelOp(" + op + ", ");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else if (t1 == INT) {
+                        output.append("ImageOps.binaryPackedPixelIntOp(" + op + ",");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else {
+                        throw new PLCRuntimeException("e0 is a Pixel and e1 is incompatible");
+                    }
                 }
                 else{
-                    output.append("ImageOps.binaryImageImageOp(" +op+", ");
-                    e0.visit(this,arg);
-                    output.append(", ");
-                    e1.visit(this,arg);
-                    output.append(")");
-                }
-
-            }
-            else if(t1 == INT){
-                output.append("ImageOps.binaryImageScalarOp(" + op+", ");
-                e0.visit(this,arg);
-                output.append(", ");
-                e1.visit(this,arg);
-                output.append(")");
-
-            }else if(t1 == PIXEL){
-                output.append("ImageOps.binaryImagePixelOp(" + op+", ");
-                e0.visit(this,arg);
-                output.append(", ");
-                e1.visit(this,arg);
-                output.append(")");
-            }else{
-                throw new PLCRuntimeException("e0 is a Image and e1 is incompatible");
-            }
-        }else if(t0 == PIXEL){
-            if(t1 == PIXEL){
-                //output.append("ImageOps.binaryImagePixelOp("+op+", ");
-                output.append("ImageOps.binaryPackedPixelPixelOp("+op+", ");
-                e0.visit(this,arg);
-                output.append(", ");
-                e1.visit(this,arg);
-                output.append(")");
-                //ImageOps.binaryImagePixelOP
-            }else if(t1 == INT){
-                output.append("ImageOps.binaryPackedPixelIntOp("+op+",");
-                e0.visit(this,arg);
-                output.append(", ");
-                e1.visit(this,arg);
-                output.append(")");
-            }else{
-                throw new PLCRuntimeException("e0 is a Pixel and e1 is incompatible");
-            }
-        }
-        else{
-            switch(binaryExpr.getOp()){
-                case PLUS -> {
                     e0.visit(this, arg);
                     output.append(" + ");
                     e1.visit(this, arg);
                 }
-                case MINUS -> {
+            }
+            case MINUS -> {
+                if(t0==IMAGE){
+                    if(t1==IMAGE){
+                        output.append("ImageOps.binaryImageImageOp(" +op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else if(t1 == INT){
+                        output.append("ImageOps.binaryImageScalarOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+
+                    }else if(t1 == PIXEL){
+                        output.append("ImageOps.binaryImagePixelOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else{
+                        throw new PLCRuntimeException("e0 is a Image and e1 is incompatible");
+                    }
+                }else if(t0 == PIXEL) {
+                    if (t1 == PIXEL) {
+                        output.append("ImageOps.binaryPackedPixelPixelOp(" + op + ", ");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else if (t1 == INT) {
+                        output.append("ImageOps.binaryPackedPixelIntOp(" + op + ",");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else {
+                        throw new PLCRuntimeException("e0 is a Pixel and e1 is incompatible");
+                    }
+                }else {
                     e0.visit(this, arg);
                     output.append(" - ");
                     e1.visit(this, arg);
                 }
-                case TIMES -> {
+            }
+            case TIMES -> {
+                if(t0==IMAGE){
+                    if(t1==IMAGE){
+                        output.append("ImageOps.binaryImageImageOp(" +op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else if(t1 == INT){
+                        output.append("ImageOps.binaryImageScalarOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+
+                    }else if(t1 == PIXEL){
+                        output.append("ImageOps.binaryImagePixelOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else{
+                        throw new PLCRuntimeException("e0 is a Image and e1 is incompatible");
+                    }
+                }else if(t0 == PIXEL) {
+                    if (t1 == PIXEL) {
+                        output.append("ImageOps.binaryPackedPixelPixelOp(" + op + ", ");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else if (t1 == INT) {
+                        output.append("ImageOps.binaryPackedPixelIntOp(" + op + ",");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else {
+                        throw new PLCRuntimeException("e0 is a Pixel and e1 is incompatible");
+                    }
+                }else{
                     e0.visit(this, arg);
                     output.append(" * ");
                     e1.visit(this, arg);
                 }
-                case DIV -> {
+            }
+            case DIV -> {
+                if(t0==IMAGE){
+                    if(t1==IMAGE){
+                        output.append("ImageOps.binaryImageImageOp(" +op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else if(t1 == INT){
+                        output.append("ImageOps.binaryImageScalarOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+
+                    }else if(t1 == PIXEL){
+                        output.append("ImageOps.binaryImagePixelOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else{
+                        throw new PLCRuntimeException("e0 is a Image and e1 is incompatible");
+                    }
+                }else if(t0 == PIXEL) {
+                    if (t1 == PIXEL) {
+                        output.append("ImageOps.binaryPackedPixelPixelOp(" + op + ", ");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else if (t1 == INT) {
+                        output.append("ImageOps.binaryPackedPixelIntOp(" + op + ",");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else {
+                        throw new PLCRuntimeException("e0 is a Pixel and e1 is incompatible");
+                    }
+                }else {
                     e0.visit(this, arg);
                     output.append(" / ");
                     e1.visit(this, arg);
                 }
-                case MOD -> {
+            }
+            case MOD -> {
+                if(t0==IMAGE){
+                    if(t1==IMAGE){
+                        output.append("ImageOps.binaryImageImageOp(" +op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else if(t1 == INT){
+                        output.append("ImageOps.binaryImageScalarOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+
+                    }else if(t1 == PIXEL){
+                        output.append("ImageOps.binaryImagePixelOp(" + op+", ");
+                        e0.visit(this,arg);
+                        output.append(", ");
+                        e1.visit(this,arg);
+                        output.append(")");
+                    }else{
+                        throw new PLCRuntimeException("e0 is a Image and e1 is incompatible");
+                    }
+                }else if(t0 == PIXEL) {
+                    if (t1 == PIXEL) {
+                        output.append("ImageOps.binaryPackedPixelPixelOp(" + op + ", ");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else if (t1 == INT) {
+                        output.append("ImageOps.binaryPackedPixelIntOp(" + op + ",");
+                        e0.visit(this, arg);
+                        output.append(", ");
+                        e1.visit(this, arg);
+                        output.append(")");
+                    } else {
+                        throw new PLCRuntimeException("e0 is a Pixel and e1 is incompatible");
+                    }
+                }else{
                     e0.visit(this, arg);
                     output.append(" % ");
                     e1.visit(this, arg);
                 }
-                case LT -> {
-                    output.append("((");
+
+            }
+            case LT -> {
+                output.append("((");
+                e0.visit(this, arg);
+                output.append("<");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
+            }
+            case GT -> {
+                output.append("((");
+                e0.visit(this, arg);
+                output.append(">");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
+            }
+            case LE -> {
+                output.append("((");
+                e0.visit(this, arg);
+                output.append("<=");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
+            }
+            case GE -> {
+                output.append("((");
+                e0.visit(this, arg);
+                output.append(">=");
+                e1.visit(this, arg);
+                output.append(") ? 1 : 0)");
+            }
+            case EQ -> {
+                if(t0 == IMAGE && t1 == IMAGE) {
+                    output.append("ImageOps.equalsForCodeGen(");
                     e0.visit(this, arg);
-                    output.append("<");
+                    output.append(", ");
                     e1.visit(this, arg);
-                    output.append(") ? 1 : 0)");
+                    output.append(")");
                 }
-                case GT -> {
-                    output.append("((");
-                    e0.visit(this, arg);
-                    output.append(">");
-                    e1.visit(this, arg);
-                    output.append(") ? 1 : 0)");
-                }
-                case LE -> {
-                    output.append("((");
-                    e0.visit(this, arg);
-                    output.append("<=");
-                    e1.visit(this, arg);
-                    output.append(") ? 1 : 0)");
-                }
-                case GE -> {
-                    output.append("((");
-                    e0.visit(this, arg);
-                    output.append(">=");
-                    e1.visit(this, arg);
-                    output.append(") ? 1 : 0)");
-                }
-                case EQ -> {
+                else{
                     output.append("((");
                     e0.visit(this, arg);
                     output.append("==");
                     e1.visit(this, arg);
                     output.append(") ? 1 : 0)");
                 }
-                case OR -> {
-                    output.append("(((");
-                    e0.visit(this, arg);
-                    output.append("!= 0)");
-                    output.append("|| (");
-                    e1.visit(this, arg);
-                    output.append("!= 0)");
-                    output.append(") ? 1 : 0)");
-                }
-                case AND -> {
-                    output.append("(((");
-                    e0.visit(this, arg);
-                    output.append("!= 0)");
-                    output.append("&& (");
-                    e1.visit(this, arg);
-                    output.append("!= 0)");
-                    output.append(") ? 1 : 0)");
-                }
-                case BITOR -> {
-                    e0.visit(this, arg);
-                    output.append(" | ");
-                    e1.visit(this, arg);
-                }
-                case BITAND -> {
-                    e0.visit(this, arg);
-                    output.append(" & ");
-                    e1.visit(this, arg);
-                }
-                case EXP -> {
-                    output.append("(int) Math.pow(");
-                    e0.visit(this, arg);
-                    output.append(", ");
-                    e1.visit(this, arg);
-                    output.append(")");
-                }
+
+            }
+            case OR -> {
+                output.append("(((");
+                e0.visit(this, arg);
+                output.append("!= 0)");
+                output.append("|| (");
+                e1.visit(this, arg);
+                output.append("!= 0)");
+                output.append(") ? 1 : 0)");
+            }
+            case AND -> {
+                output.append("(((");
+                e0.visit(this, arg);
+                output.append("!= 0)");
+                output.append("&& (");
+                e1.visit(this, arg);
+                output.append("!= 0)");
+                output.append(") ? 1 : 0)");
+            }
+            case BITOR -> {
+                e0.visit(this, arg);
+                output.append(" | ");
+                e1.visit(this, arg);
+            }
+            case BITAND -> {
+                e0.visit(this, arg);
+                output.append(" & ");
+                e1.visit(this, arg);
+            }
+            case EXP -> {
+                output.append("(int) Math.pow(");
+                e0.visit(this, arg);
+                output.append(", ");
+                e1.visit(this, arg);
+                output.append(")");
             }
         }
-
         output.append(")");
         return null;
     }
