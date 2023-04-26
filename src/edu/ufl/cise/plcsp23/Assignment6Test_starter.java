@@ -1,13 +1,5 @@
 package edu.ufl.cise.plcsp23;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-
-import org.junit.jupiter.api.Test;
-
 import edu.ufl.cise.plcsp23.ast.AST;
 import edu.ufl.cise.plcsp23.ast.Program;
 import edu.ufl.cise.plcsp23.javaCompilerClassLoader.DynamicClassLoader;
@@ -16,6 +8,13 @@ import edu.ufl.cise.plcsp23.runtime.ConsoleIO;
 import edu.ufl.cise.plcsp23.runtime.FileURLIO;
 import edu.ufl.cise.plcsp23.runtime.ImageOps;
 import edu.ufl.cise.plcsp23.runtime.PixelOps;
+import org.junit.jupiter.api.Test;
+
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class Assignment6Test_starter {
 
@@ -39,7 +38,7 @@ class Assignment6Test_starter {
 	}
 
 	static final boolean VERBOSE = true;
-	static final boolean WAIT_FOR_INPUT = true;
+	static final boolean WAIT_FOR_INPUT = false;
 
 	/**
 	 * This waits for input to prevent Junit and your IDE from closing the window
@@ -400,6 +399,7 @@ class Assignment6Test_starter {
 		BufferedImage expected = FileURLIO.readImage(s, 100, 200);
 		imageEquals(expected, result);
 		show(result);
+
 	}
 
 	@Test

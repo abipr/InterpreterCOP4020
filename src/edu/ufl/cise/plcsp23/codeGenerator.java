@@ -11,10 +11,10 @@ import static edu.ufl.cise.plcsp23.ast.Type.*;
 *
 * BinaryExpr
 * UnaryExprPostfix
+*
+*
+*
 * Declaration
-*
-*
-*
 * Handle Channel Selector in Assignment Statement for LValue
 * Assignment Statement last
 * */
@@ -41,10 +41,10 @@ public class codeGenerator implements ASTVisitor {
                 javaType = "void";
             }
             case IMAGE->{
-                throw new UnsupportedOperationException("IMAGE");
+                javaType = "BufferedImage";
             }
             case PIXEL->{
-                throw new UnsupportedOperationException("PIXEL");
+                javaType = "int";
             }
         }
         return javaType;
@@ -53,24 +53,39 @@ public class codeGenerator implements ASTVisitor {
         LValue lValue = statementAssign.getLv();
         Expr expr = statementAssign.getE();
 
+
         if(lValue.type == STRING){
             if(expr.getType() == INT){
                 lValue.visit(this,arg);
-                output.append("=");
+                output.append(" = ");
                 expr.visit(this,arg);
                 output.append(".toString()");
             }else{
                 lValue.visit(this,arg);
-                output.append("=");
+                output.append(" = ");
                 expr.visit(this,arg);
             }
         }else if(lValue.type == PIXEL){
-            lValue.visit(this,arg);
-            output.append("=");
-            expr.visit(this, arg);
-        }else if(lValue.type == IMAGE){
+            if(expr.getType() == INT){
+                lValue.visit(this,arg);
+                output.append(" = ");
+                output.append("PixelOps.pack(");
+                expr.visit(this,arg);
+                output.append(",");
+                expr.visit(this,arg);
+                output.append(",");
+                expr.visit(this,arg);
+                output.append(")");
+            }
+            else{
+                lValue.visit(this,arg);
+                output.append(" = ");
+                expr.visit(this, arg);
+            }
+        }else if(lValue.type == IMAGE || lValue.nameDef.getType() == IMAGE){
             PixelSelector pixelSelector = lValue.getPixelSelector();
             ColorChannel color = lValue.getColor();
+
             if(pixelSelector == null){
                 if(color == null){
                     switch(expr.getType()){
@@ -83,33 +98,74 @@ public class codeGenerator implements ASTVisitor {
                             output.append(")");
                         }
                         case IMAGE -> {
-                            //get size of LValue image
-                            //resize expr image to those dimensions
-                            //ImageOps.copyInto()
+                            output.append("ImageOps.copyInto(");
+                            expr.visit(this,arg);
+                            output.append(", ");
+                            lValue.visit(this,arg);
+                            output.append(")");
                         }
                         case PIXEL -> {
-
+                            output.append("ImageOps.setAllPixels(");
+                            output.append(lValue.nameDef.getIdent().getName());
+                            output.append(lValue.nameDef.scopeID);
+                            output.append(",");
+                            expr.visit(this,arg);
+                            output.append(")");
                         }
                         default -> {
                             throw new PLCRuntimeException("unexpected expr type");
                         }
                     }
-                }else{
-                    throw new PLCRuntimeException("no pixel selector, but has color channel");
+                }else{//no pixel selector, but has color channel
+                    //throw new PLCRuntimeException("no pixel selector, but has color channel");
                 }
             }else{
-                if(color == null){//Variable type is image with pixel selector, no color channel
-                    //3 lectures ago, April 12th
+                if(color != null){//Variable type is image with pixel selector and color channel
+                    output.append("for (int y = 0; y != ");
+                    String name = lValue.getIdent().getName();
+                    name += lValue.nameDef.scopeID;
 
-                }else{//Variable type is image with pixel selector and color channel
+                    output.append(name);
+                    output.append(".getHeight(); y++) {\n");
+                    output.append("for (int x = 0; x != ");
+                    output.append(name);
+                    output.append(".getWidth(); x++) {\n");
+                    output.append("ImageOps.setRGB(");
+                    output.append(name);
+                    output.append(",x,y, ");
+                    if(color.name() == "red"){
+                        output.append("PixelOps.setRed(");
+                    }else if(color.name() == "grn"){
+                        output.append("PixelOps.setGrn(");
+                    }else if(color.name() == "blu"){
+                        output.append("PixelOps.setBlu(");
+                    }
+                    output.append("ImageOps.getRGB(");
+                    output.append(name);
+                    output.append(", x, y), ");
+                    expr.visit(this,arg);
 
+                    output.append("));\n}\n}");
+
+                }else{//Variable type is image with pixel selector, no color channel
+                    Dimension dimension = lValue.nameDef.getDimension();
+                    String name = lValue.getIdent().getName();
+                    name += lValue.nameDef.scopeID;
+                    output.append("for (int y = 0; y != ");
+                    output.append(name);
+                    output.append(".getHeight(); y++) {\n");
+                    output.append("for (int x = 0; x != ");
+                    output.append(name);
+                    output.append(".getWidth(); x++) {\n");
+                    output.append("ImageOps.setRGB(");
+                    output.append(name);
+                    output.append(",x,y");
+                    output.append(", ImageOps.getRGB(");
+                    output.append(name);
+                    output.append(", x, y");
+                    output.append("));\n}}");
                 }
             }
-        }
-        else{
-            lValue.visit(this,arg);
-            output.append("=");
-            expr.visit(this,arg);
         }
         return null;
     }
@@ -141,7 +197,6 @@ public class codeGenerator implements ASTVisitor {
 
         if(t0 == IMAGE){
             if(t1 == IMAGE){
-
                 output.append("ImageOps.binaryImageImageOp(" +op+", ");
                 e0.visit(this,arg);
                 output.append(", ");
@@ -155,12 +210,26 @@ public class codeGenerator implements ASTVisitor {
                 e1.visit(this,arg);
                 output.append(")");
 
+            }else if(t1 == PIXEL){
+                output.append("ImageOps.binaryImagePixelOp(" + op+", ");
+                e0.visit(this,arg);
+                output.append(", ");
+                e1.visit(this,arg);
+                output.append(")");
             }else{
                 throw new PLCRuntimeException("e0 is a Image and e1 is incompatible");
             }
         }else if(t0 == PIXEL){
             if(t1 == PIXEL){
-                output.append("ImageOps.binaryImagePixelOp("+op+", ");
+                //output.append("ImageOps.binaryImagePixelOp("+op+", ");
+                output.append("ImageOps.binaryPackedPixelPixelOp("+op+", ");
+                e0.visit(this,arg);
+                output.append(", ");
+                e1.visit(this,arg);
+                output.append(")");
+                //ImageOps.binaryImagePixelOP
+            }else if(t1 == INT){
+                output.append("ImageOps.binaryPackedPixelIntOp("+op+",");
                 e0.visit(this,arg);
                 output.append(", ");
                 e1.visit(this,arg);
@@ -305,14 +374,111 @@ public class codeGenerator implements ASTVisitor {
     }
     public Object visitDeclaration(Declaration declaration, Object arg) throws PLCException {
         NameDef nameDef = declaration.getNameDef();
-        nameDef.visit(this,arg);
+
         Expr expr = declaration.getInitializer();
+        Type nameType = nameDef.getType();
+
+        Dimension dimension = nameDef.getDimension();
         if(expr != null){
-            output.append("=");
-            expr.visit(this,arg);
-            if(expr.getType() == INT && nameDef.getType() == STRING){
+            Type exprType = expr.getType();
+
+            if(exprType == INT && nameType == STRING){
+                nameDef.visit(this,arg);
+                output.append(" = ");
+                expr.visit(this,arg);
                 output.append(".toString()");
             }
+            else if(nameType == IMAGE){
+                if(dimension != null){
+                    nameDef.visit(this,arg);
+                    output.append(" = ");
+                    output.append("ImageOps.makeImage(");
+                    dimension.visit(this,arg);
+                    output.append(");\n");
+
+
+                    if(exprType == STRING){
+                        output.append(nameDef.getIdent().getName());
+                        output.append(nameDef.scopeID);
+                        output.append(" = ");
+                        output.append("FileURLIO.readImage(");
+                        expr.visit(this,arg);
+                        output.append(", ");
+                        dimension.visit(this,arg);
+                        output.append(")");
+                    }
+                    else if(exprType == IMAGE){
+                        output.append(nameDef.getIdent().getName());
+                        output.append(nameDef.scopeID);
+                        output.append(" = ");
+                        output.append("ImageOps.copyAndResize(");
+                        expr.visit(this,arg);
+                        output.append(",");
+                        dimension.visit(this,arg);
+                        output.append(")");
+                    }
+                    else if(exprType == PIXEL){
+                        output.append(nameDef.getIdent().getName());
+                        output.append(nameDef.scopeID);
+                        output.append(" = ");
+                        output.append("ImageOps.setAllPixels(");
+                        output.append(nameDef.getIdent().getName());
+                        output.append(nameDef.scopeID);
+                        output.append(" , ");
+                        expr.visit(this,arg);
+                        output.append(")");
+
+                    }
+                    else{
+
+                    }
+                }else{//dimension == null
+                    if(exprType == STRING){
+                        nameDef.visit(this,arg);
+                        output.append(" = ");
+                        output.append("FileURLIO.readImage(");
+                        expr.visit(this,arg);
+                        output.append(")");
+                    }
+                    else if(exprType == IMAGE){
+                        nameDef.visit(this,arg);
+                        output.append(" = ");
+                        output.append("ImageOps.cloneImage(");
+
+                        expr.visit(this,arg);
+                        output.append(")");
+                    }
+                }
+            }
+            else if(nameType == PIXEL ){
+                nameDef.visit(this,arg);
+                output.append(" = ");
+                expr.visit(this, arg);
+                /*if(exprType == PIXEL){
+                    nameDef.visit(this,arg);
+                    output.append(" = ");
+                    expr.visit(this,arg);//expect visitexpandedpixelexpr
+                }else if(exprType == INT){
+                    nameDef.visit(this,arg);
+                    output.append(" = ");
+                    expr.visit(this, arg);
+                }*/
+
+            }
+            else{
+                nameDef.visit(this,arg);
+                output.append(" = ");
+                expr.visit(this,arg);
+            }
+        }else{
+            nameDef.visit(this,arg);
+            if(nameType == IMAGE && dimension != null){
+                output.append(" = ");
+                output.append("ImageOps.makeImage(");
+                dimension.visit(this,arg);
+                output.append(")");
+            }
+
         }
         return null;
     }
@@ -396,7 +562,12 @@ public class codeGenerator implements ASTVisitor {
             output.append(packageName);
             output.append(";\n");
         }
-        output.append("import edu.ufl.cise.plcsp23.runtime.ConsoleIO;\n");
+
+        output.append("import edu.ufl.cise.plcsp23.runtime.ConsoleIO;\n" +
+                "import edu.ufl.cise.plcsp23.runtime.FileURLIO;\n" +
+                "import edu.ufl.cise.plcsp23.runtime.ImageOps;\n" +
+                "import edu.ufl.cise.plcsp23.runtime.PixelOps;\n");
+        output.append("import java.awt.image.BufferedImage;\n");
         output.append("public class ");
         output.append(program.getIdent().getName());
         output.append(" {\npublic static ");
@@ -456,8 +627,70 @@ public class codeGenerator implements ASTVisitor {
         }
     }
     public Object visitUnaryExprPostFix(UnaryExprPostfix unaryExprPostfix, Object arg) throws PLCException {
-        //do not implement in Assignment 5
-        throw new UnsupportedOperationException("visitUnaryExprPostFix");
+        Expr primary = unaryExprPostfix.getPrimary();
+        PixelSelector pixel = unaryExprPostfix.getPixel();
+        ColorChannel color = unaryExprPostfix.getColor();
+        Boolean p = false;
+        Boolean c = false;
+        if(pixel != null){
+            p = true;
+        }
+        if(color != null){
+            c = true;
+        }
+        if(primary.getType() == IMAGE){
+            if(p && !c){
+                output.append("ImageOps.getRGB(");
+                primary.visit(this,arg);
+                output.append(", ");
+                pixel.visit(this,arg);
+                output.append(")");
+            }else if(p && c){
+                if(color.name() == "red"){
+                    output.append("PixelOps.red(");
+                }else if(color.name() == "grn"){
+                    output.append("PixelOps.grn(");
+                }else if(color.name() == "blu"){
+                    output.append("PixelOps.blu(");
+                }
+                output.append("ImageOps.getRGB(");
+                primary.visit(this,arg);
+                output.append(", ");
+                pixel.visit(this,arg);
+                output.append(")");
+
+                output.append(")");
+            }else if(c){
+                if(color.name() == "red"){
+                    output.append("ImageOps.extractRed(");
+                    primary.visit(this,arg);
+                    output.append(")");
+                }else if(color.name() == "grn"){
+                    output.append("ImageOps.extractGrn(");
+                    primary.visit(this,arg);
+                    output.append(")");
+                }else if(color.name() == "blu"){
+                    output.append("ImageOps.extractBlu(");
+                    primary.visit(this,arg);
+                    output.append(")");
+                }
+
+            }else{
+                primary.visit(this,arg);
+            }
+        }else if(primary.getType() == PIXEL && c){
+            //check if pixel selector is null?
+            if(color.name() == "red"){
+                output.append("PixelOps.red(");
+            }else if(color.name() == "grn"){
+                output.append("PixelOps.grn(");
+            }else if(color.name() == "blu"){
+                output.append("PixelOps.blu(");
+            }
+            primary.visit(this,arg);
+            output.append(")");
+        }
+        return null;
     }
     public Object visitWhileStatement(WhileStatement whileStatement, Object arg) throws PLCException {
         Expr expr = whileStatement.getGuard();
