@@ -54,7 +54,7 @@ public class codeGenerator implements ASTVisitor {
         Expr expr = statementAssign.getE();
 
 
-        if(lValue.type == STRING){
+        if(lValue.nameDef.getType() == STRING){
             if(expr.getType() == INT){
                 lValue.visit(this,arg);
                 output.append(" = ");
@@ -65,7 +65,7 @@ public class codeGenerator implements ASTVisitor {
                 output.append(" = ");
                 expr.visit(this,arg);
             }
-        }else if(lValue.type == PIXEL){
+        }else if(lValue.nameDef.getType() == PIXEL){
             if(expr.getType() == INT){
                 lValue.visit(this,arg);
                 output.append(" = ");
@@ -82,7 +82,7 @@ public class codeGenerator implements ASTVisitor {
                 output.append(" = ");
                 expr.visit(this, arg);
             }
-        }else if(lValue.type == IMAGE || lValue.nameDef.getType() == IMAGE){
+        }else if(lValue.nameDef.getType() == IMAGE){
             PixelSelector pixelSelector = lValue.getPixelSelector();
             ColorChannel color = lValue.getColor();
 
@@ -160,10 +160,15 @@ public class codeGenerator implements ASTVisitor {
                     output.append("ImageOps.setRGB(");
                     output.append(name);
                     output.append(",x,y");
-                    output.append(", ImageOps.getRGB(");
-                    output.append(name);
-                    output.append(", x, y");
-                    output.append("));\n}}");
+                    if(expr.getType() == PIXEL){
+                        output.append(", ");
+                        expr.visit(this,arg);
+                    }else{
+                        output.append(", ImageOps.getRGB(");
+                        output.append(name);
+                        output.append(", x, y)");
+                    }
+                    output.append(");\n}}");
                 }
             }
         }
@@ -193,15 +198,29 @@ public class codeGenerator implements ASTVisitor {
             case MOD -> {
                 op = "ImageOps.OP.MOD";
             }
+            case EQ -> {
+                op = "ImageOps.BoolOP.EQUALS";
+            }
+
         }
 
         if(t0 == IMAGE){
             if(t1 == IMAGE){
-                output.append("ImageOps.binaryImageImageOp(" +op+", ");
-                e0.visit(this,arg);
-                output.append(", ");
-                e1.visit(this,arg);
-                output.append(")");
+                if(binaryExpr.getOp() == IToken.Kind.EQ){
+                    output.append("ImageOps.equalsForCodeGen(");
+                    e0.visit(this,arg);
+                    output.append(", ");
+                    e1.visit(this,arg);
+                    output.append(")");
+                }
+                else{
+                    output.append("ImageOps.binaryImageImageOp(" +op+", ");
+                    e0.visit(this,arg);
+                    output.append(", ");
+                    e1.visit(this,arg);
+                    output.append(")");
+                }
+
             }
             else if(t1 == INT){
                 output.append("ImageOps.binaryImageScalarOp(" + op+", ");
